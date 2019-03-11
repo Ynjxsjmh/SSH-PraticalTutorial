@@ -1,0 +1,14 @@
+# Compiled class file
+*.class
+
+# Log file
+*.log
+
+/.metadata
+/RemoteSystemsTempFiles
+/Servers
+
+*.classpath
+*.project
+*/build
+*/.settings
