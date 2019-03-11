@@ -5,10 +5,13 @@ This a repo to store the SSH projects teacher taught me.
 - jdk 1.7 or jdk 1.8
 - apache-tomcat-7.0.57
 - MySQL
+- Eclipse
 
 To run the project I offered, you need to add tomcat lib jar files to the existing projects.
 
 Then you should modify the MySQL password.
+
+I only track the core code in the project so that the project cloned to your computer possiblily couldn't run.
 
 * File Info
 =HibernateCRM01= just realises the addition of customer.
