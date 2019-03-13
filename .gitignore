@@ -12,3 +12,4 @@
 *.project
 */build
 */.settings
+/.recommenders/

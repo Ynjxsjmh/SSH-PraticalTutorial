@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE struts PUBLIC
+	"-//Apache Software Foundation//DTD Struts Configuration 2.3//EN"
+	"http://struts.apache.org/dtds/struts-2.3.dtd">
+<struts>
+
+	<!-- struts-default 的定义可以在 struts-default.xml 中找到，默认定义了很多的拦截器 -->
+	<!-- 因此 package 就是引入我们的核心拦截器 -->
+	<package name="lalala" namespace="/" extends="struts-default">
+		<!-- 配置用户的模块，一个 action 就是一个模块 -->
+		<!-- 
+			这里的 name 就是 Servlet 中 servlet-mapping 的 url-pattern。只不过少了 / 
+			class 就是 servlet-class
+		-->
+		<!-- 
+			这里的 HelloAction 可能不止一个方法，我们得在 method 中告诉 Struts 使用哪个方法
+			
+			但是如果要使用不同的方法，我们可能会手动更改 method 的值，这样十分麻烦。
+			我们会在下一个项目中解决这个动态调用的问题
+		-->
+		<action name="hello" class="com.atcast.action.HelloAction"
+			method="execute">
+			<result name="login">/login.jsp</result>
+			<result name="success">/success.jsp</result>
+		</action>
+	</package>
+</struts>
