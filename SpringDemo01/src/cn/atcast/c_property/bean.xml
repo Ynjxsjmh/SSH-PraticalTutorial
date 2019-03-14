@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:p="http://www.springframework.org/schema/p"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xsi:schemaLocation="
+        http://www.springframework.org/schema/beans
+        http://www.springframework.org/schema/beans/spring-beans.xsd
+        http://www.springframework.org/schema/context
+        http://www.springframework.org/schema/context/spring-context.xsd">
+
+	<!-- ############### 对象属性赋值 ############### -->
+
+	<!-- 1) 通过构造函数 -->
+	<bean id="user1" class="cn.atcast.c_property.User" scope="prototype">
+		<constructor-arg value="100"></constructor-arg>
+		<constructor-arg value="Tom"></constructor-arg>
+	</bean>
+
+	<!-- 2) set方法来给属性注入值 -->
+	<bean id="user2" class="cn.atcast.c_property.User" scope="prototype">
+		<property name="id" value="12"></property>
+		<property name="name" value="tom"></property>
+	</bean>
+
+	<!-- —————————————————————————————————————————————————————————————————— -->
+
+	<!-- dao->service->controller
+		dao.java
+		service.java->dao dao1=new dao();
+		controller.java->service sesrvice1=new service();
+		spring->dao,service,controller来管理对象
+	 -->
+
+	<bean id="userDao" class="cn.atcast.c_property.UserDao"></bean>
+
+	<bean id="userService" class="cn.atcast.c_property.UserService">
+		<!-- property 节点的 name 字段的值是 UserService 类中的 UserDao 实例的名字 -->
+		<!-- ref 字段的值是配置文件中任一 UserDao 配置信息的 id -->
+		<!-- 这个很好理解，property 是属性的意思，就是根据对象中属性的名字（标识符）配置值 -->
+		<property name="userDao" ref="userDao"></property>
+	</bean>
+
+	<bean id="userAction1" class="cn.atcast.c_property.UserAction">
+		<property name="userService" ref="userService"></property>
+	</bean>
+
+
+	<!-- ############### 内部bean ############### -->
+	<!-- 下面这种配置 UserAction 的方式也可以，但是不推荐 -->
+	<bean id="userAction2" class="cn.atcast.c_property.UserAction">
+		<property name="userService">
+			<bean class="cn.atcast.c_property.UserService">
+				<property name="userDao">
+					<bean class="cn.atcast.c_property.UserDao"></bean>
+				</property>
+			</bean>
+		</property>
+	</bean>
+</beans>      
+ 

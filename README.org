@@ -21,3 +21,5 @@ I only track the core code in the project so that the project cloned to your com
 =Struts2SimplestDemo= is just a project with pure Struts2. If you understand this demo, you can grasp half of the knowledge of Struts2.
 
 =Structs2CRM01= uses Structs2 serves as control layer and Hibernate serves as persistence layer. It implements the login function of CRM.
+
+=SpringDemo01= uses Spring and mainly tells how object is created in Spring.

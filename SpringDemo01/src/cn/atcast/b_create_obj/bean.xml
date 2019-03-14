@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:p="http://www.springframework.org/schema/p"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xsi:schemaLocation="
+        http://www.springframework.org/schema/beans
+        http://www.springframework.org/schema/beans/spring-beans.xsd
+        http://www.springframework.org/schema/context
+        http://www.springframework.org/schema/context/spring-context.xsd">
+
+	<!-- ###############对象创建############### -->
+
+	<!-- 1. 默认无参数构造器 -->
+	<bean id="user1" class="cn.atcast.b_create_obj.User"></bean>
+
+	<!-- 2. 带参数构造器 -->
+	<bean id="user2" class="cn.atcast.b_create_obj.User">
+		<constructor-arg index="0" type="int" value="100"></constructor-arg>
+		<constructor-arg index="1" type="java.lang.String"
+			value="Tom"></constructor-arg>
+	</bean>
+
+	<!--
+		 定义一个字符串，值是"Jack" 
+		String str = new String("jack") 
+	-->
+	<bean id="str" class="java.lang.String">
+		<constructor-arg value="jack"></constructor-arg>
+	</bean>
+
+	<bean id="user3" class="cn.atcast.b_create_obj.User">
+		<constructor-arg index="0" type="int" value="100"></constructor-arg>
+		<constructor-arg index="1" type="java.lang.String"
+			ref="str"></constructor-arg>
+	</bean>
+
+	<!-- 3. 工厂类创建对象 -->
+	<!-- # 3.1 工厂类，实例方法 -->
+	<!-- 先创建工厂 -->
+	<bean id="factory" class="cn.atcast.b_create_obj.ObjectFactory"></bean>
+	<!-- 告诉 Spring 通过哪个工厂的哪个方法创建对象 -->
+	<bean id="user4" factory-bean="factory" factory-method="getInstance"></bean>
+
+
+	<!-- # 3.2 工厂类： 静态方法 -->
+	<!-- class 指定的就是工厂类型 factory-method 一定是工厂里面的“静态方法” -->
+	<bean id="user5" class="cn.atcast.b_create_obj.ObjectFactory"
+		factory-method="getStaticInstance"></bean>
+
+</beans>      
