@@ -24,6 +24,10 @@ I only track the core code in the project so that the project cloned to your com
 
 =SpringDemo01= uses Spring and mainly tells how object is created in Spring.
 
+=SpringDemo02= shows some demo on proxy pattern and AOP programming.
+
 =SpringCRM01= is an easy project which combines Spring and Struts.
 
 =SpringCRM02= is the initial intergration of the SSH framework. Don't be fooled by it's name. It only implements add customer funtion.
+
+Note that all the SpringDemo* are Java projects, you also need to import the all the jars in =lib= folder to the project by following =Right click on your project name -> Build Path -> Configure Build Path -> Tab **Libraries** -> Add JARs -> Choose all the jars in your project's lib folder= 
