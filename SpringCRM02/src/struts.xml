@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE struts PUBLIC
+	"-//Apache Software Foundation//DTD Struts Configuration 2.3//EN"
+	"http://struts.apache.org/dtds/struts-2.3.dtd">
+<struts>
+
+	<!-- 先配置包结构 -->
+	<package name="crm" extends="struts-default" namespace="/">
+		<!-- 是由Struts2框架自己来管理Action -->
+		<!-- <action name="customer_*" class="com.atcast.web.action.CustomerAction" 
+			method="{1}"/> -->
+
+		<!-- 配置客户的Action，如果Action由Spring框架来管理，class标签上只需要编写ID值就OK -->
+		<action name="customer_*" class="customerAction" method="{1}">
+			<result name="initAddUI">/jsp/customer/add.jsp</result>
+			<!-- redirectAction 跳转到另一个 action 上 ，默认是跳到 jsp 页面上的-->
+			<result name="save" type="redirectAction">customer_save.action</result>
+			<result name="findAll" type="redirectAction">customer_findAll.action</result>
+			<result name="list">/jsp/customer/list.jsp</result>
+		</action>
+	</package>
+
+</struts>

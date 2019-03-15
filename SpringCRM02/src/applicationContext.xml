@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:aop="http://www.springframework.org/schema/aop" xmlns:tx="http://www.springframework.org/schema/tx"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans 
+	http://www.springframework.org/schema/beans/spring-beans.xsd
+	http://www.springframework.org/schema/context
+	http://www.springframework.org/schema/context/spring-context.xsd
+	http://www.springframework.org/schema/aop
+	http://www.springframework.org/schema/aop/spring-aop.xsd
+	http://www.springframework.org/schema/tx 
+	http://www.springframework.org/schema/tx/spring-tx.xsd">
+
+	<!-- 先配置C3P0的连接池。连接池还有阿里的 Druid -->
+	<bean id="dataSource" class="com.mchange.v2.c3p0.ComboPooledDataSource">
+		<property name="driverClass" value="com.mysql.jdbc.Driver" />
+		<property name="jdbcUrl" value="jdbc:mysql:///crm" />
+		<property name="user" value="root" />
+		<property name="password" value="root" />
+	</bean>
+
+	<!-- LocalSessionFactoryBean加载配置文件 -->
+	<!-- sessionFactory 由 Spring 对 Hibernate 支持的一个类提供 -->
+	<!-- 这里替换掉了 Hibernate 的配置文件 -->
+	<bean id="sessionFactory"
+		class="org.springframework.orm.hibernate5.LocalSessionFactoryBean">
+		<!-- 先加载连接池 -->
+		<property name="dataSource" ref="dataSource" />
+
+		<!-- 加载方言，加载可选 -->
+		<property name="hibernateProperties">
+			<props>
+				<prop key="hibernate.dialect">org.hibernate.dialect.MySQLDialect</prop>
+				<prop key="hibernate.show_sql">true</prop>
+				<prop key="hibernate.format_sql">true</prop>
+				<prop key="hibernate.hbm2ddl.auto">update</prop>
+			</props>
+		</property>
+
+		<!-- 引入映射的配置文件 -->
+		<property name="mappingResources">
+			<list>
+				<value>com/atcast/domain/Customer.hbm.xml</value>
+			</list>
+		</property>
+	</bean>
+
+	<!-- 先配置平台事务管理器 -->
+	<!-- 事务的配置有 XML 和注解的方式，但 XML 太啰嗦，这里采用注解方式 -->
+	<bean id="transactionManager"
+		class="org.springframework.orm.hibernate5.HibernateTransactionManager">
+		<!-- 做事务一定要知道数据库在哪 -->
+		<property name="sessionFactory" ref="sessionFactory" />
+	</bean>
+
+	<!-- 开启事务的注解 -->
+	<tx:annotation-driven transaction-manager="transactionManager" />
+
+
+	<!-- 配置客户模块 -->
+	<!-- DAO 层     业务层      控制层 -->
+
+	<!-- 以后：Dao都需要继承HibernateDaoSupport，注入sessionFactory -->
+	<bean id="customerDao" class="com.atcast.dao.CustomerDaoImpl">
+		<property name="sessionFactory" ref="sessionFactory" />
+	</bean>
+
+	<bean id="customerService" class="com.atcast.service.CustomerServiceImpl">
+		<property name="customerDao" ref="customerDao" />
+	</bean>
+
+	<!-- 强调：以后配置Action，必须是多例的 -->
+	<bean id="customerAction" class="com.atcast.web.action.CustomerAction"
+		scope="prototype">
+		<property name="customerService" ref="customerService" />
+	</bean>
+
+</beans>
