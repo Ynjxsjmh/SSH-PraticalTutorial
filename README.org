@@ -7,7 +7,7 @@ This a repo to store the SSH projects my teacher taught me.
 - MySQL
 - Eclipse
 
-To run the project I offered, you need to add tomcat lib jar files to the existing projects.
+To run the project I offered, you need to add tomcat lib jar files to the existing projects. Steps to do that are =Right click on your project name -> Build Path -> Configure Build Path -> Tab **Libraries** -> Add Library -> Server Run Time -> Apache Tomcat= 。
 
 Then you should modify the MySQL password.
 
@@ -23,3 +23,5 @@ I only track the core code in the project so that the project cloned to your com
 =Structs2CRM01= uses Structs2 serves as control layer and Hibernate serves as persistence layer. It implements the login function of CRM.
 
 =SpringDemo01= uses Spring and mainly tells how object is created in Spring.
+
+=SpringCRM01= is an easy project which combines Spring and Struts.

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE struts PUBLIC
+	"-//Apache Software Foundation//DTD Struts Configuration 2.3//EN"
+	"http://struts.apache.org/dtds/struts-2.3.dtd">
+<struts>
+	
+    <package name="crm" namespace="/" extends="struts-default">
+    	<!-- 这里的 class 交给 Spring 写，class 的值对应了 Spring 配置文件 CustomerAction 的 id -->
+    	<!--  <action name="customer_*" class="com.atcast.web.action.CustomerAction" method="{1}"> -->
+        <action name="customer_*" class="customerAction" method="{1}">
+    	</action>
+    </package>
+    
+</struts>
