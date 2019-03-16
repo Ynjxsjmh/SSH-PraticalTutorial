@@ -1,0 +1,32 @@
+<?xml version="1.0"?>
+<!DOCTYPE hibernate-mapping PUBLIC 
+	"-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+	"http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
+
+<hibernate-mapping package="cn.atcast.b_one2Many">
+	<class name="Dept" table="t_dept">
+		<id name="deptId">
+			<generator class="native"></generator>
+		</id>	
+		<property name="deptName" length="20"></property>
+
+		<!-- 
+			一对多关联映射配置  （通过部门管理到员工）
+			Dept 映射关键点：
+			1.  指定 映射的集合属性： "emps"
+			2.  集合属性对应的集合表： "t_employee"
+			3.  集合表的外键字段   "t_employee. dept_id"
+			4.  集合元素的类型
+			
+			inverse=false  set集合映射的默认值； 表示有控制权
+		 -->
+		 <!-- 只能在一的一方设置。如果设置控制反转,即inverse=true, 员工方不会维护关联关系，
+		 通过部门方维护关联关系。但在App1_save的save()方法中，先保存员工，后保存部门，此时员工没有部门的编号，员工表中部门值为null，
+		 并且维护方为部门，员工方就不会再执行update语句，因为员工方是不需要维护的。而将inverser=false,则部门方不维护，将维护交给员工方，
+		 所以员工方会执行update语句 -->
+		 <set name="emps" cascade="save-update,delete" table="t_employee" inverse="true">   
+		 	 <key column="dept_id"></key>
+		 	 <one-to-many class="Employee"/>
+		 </set>
+	</class>
+</hibernate-mapping>
