@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE hibernate-mapping PUBLIC 
+    "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+    "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
+<hibernate-mapping>
+	
+	<class name="com.atcast.domain.Customer" table="cst_customer">
+		<id name="cust_id" column="cust_id">
+			<generator class="native"/>
+		</id>
+		
+		<property name="cust_name" column="cust_name"/>
+		<property name="cust_user_id" column="cust_user_id"/>
+		<property name="cust_create_id" column="cust_create_id"/>
+		<property name="cust_source" column="cust_source"/>
+		<property name="cust_industry" column="cust_industry"/>
+		<property name="cust_level" column="cust_level"/>
+		<property name="cust_linkman" column="cust_linkman"/>
+		<property name="cust_phone" column="cust_phone"/>
+		<property name="cust_mobile" column="cust_mobile"/>
+		
+		<!-- 配置一方 -->
+		<!--
+			set标签name属性：表示集合的名称
+		-->
+		<set name="linkmans" cascade="save-update,delete" table="cst_linkman"  inverse="false">
+			<!-- 需要出现子标签 -->
+			<!-- 外键的字段 -->
+			<key column="lkm_cust_id"/>
+			<one-to-many class="com.atcast.domain.Linkman"/>
+		</set>
+		
+	</class>
+	
+</hibernate-mapping>    
