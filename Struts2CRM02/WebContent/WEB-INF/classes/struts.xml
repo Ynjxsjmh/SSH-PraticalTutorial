@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE struts PUBLIC
+	"-//Apache Software Foundation//DTD Struts Configuration 2.3//EN"
+	"http://struts.apache.org/dtds/struts-2.3.dtd">
+<struts>
+	<constant name="struts.i18n.encoding" value="UTF-8"/>
+	<package name="crm" namespace="/" extends="struts-default">
+		
+		<!-- 配置拦截器 -->
+		<interceptors>
+			<interceptor name="UserInterceptor" class="com.itheima.interceptor.UserInterceptor"/>
+		</interceptors>
+		
+		<global-results>
+			<result name="login">/login.htm</result>
+		</global-results>
+		
+		<!-- 配置用户的模块 -->
+		<action name="user_*" class="com.atcast.action.UserAction" method="{1}">
+			<!-- <result name="login">/login.htm</result> -->
+			<result name="success">/index.htm</result>
+			<interceptor-ref name="UserInterceptor">
+				<!-- login方法不拦截 -->
+				<param name="excludeMethods">login</param>
+			</interceptor-ref>
+			<interceptor-ref name="defaultStack"/>
+		</action>
+		
+		<!-- 客户模块 -->
+		<action name="customer_*" class="com.atcast.action.CustomerAction" method="{1}">
+			<result name="list">/jsp/customer/list.jsp</result>
+			<result name="relist" type="redirectAction">customer_list.action</result>
+			<interceptor-ref name="UserInterceptor"/>
+			<interceptor-ref name="defaultStack"/>
+		</action>
+		
+	</package>
+    
+</struts>
+
+
+
+
+
+
+
+
+
+
+
+
+
