@@ -1,0 +1,48 @@
+<?xml version="1.0"?>
+<!DOCTYPE hibernate-mapping PUBLIC
+        "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+        "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
+
+<hibernate-mapping>
+    <class name="cn.atcast.crm.domain.CstLinkman" table="cst_linkman" >
+        <id name="lkmId" type="java.lang.Long">
+            <column name="lkm_id" />
+            <generator class="identity" />
+        </id>
+        <property name="lkmName" type="string">
+            <column name="lkm_name" length="16"></column>
+        </property>
+        <property name="lkmGender" type="string">
+            <column name="lkm_gender" length="1"></column>
+        </property>
+        <property name="lkmPhone" type="string">
+            <column name="lkm_phone" length="16" ></column>
+        </property>
+        <property name="lkmMobile" type="string">
+            <column name="lkm_mobile" length="16"></column>
+        </property>
+        <property name="lkmEmail" type="string">
+            <column name="lkm_email" length="64"></column>
+        </property>
+        <property name="lkmQq" type="string">
+            <column name="lkm_qq" length="16"></column>
+        </property>
+        <property name="lkmPosition" type="string">
+            <column name="lkm_position" length="16"></column>
+        </property>
+        <property name="lkmMemo" type="string">
+            <column name="lkm_memo" length="512"></column>
+        </property>
+		
+		<!-- 多对一配置，多个联系人对应一个客户
+		many-to-one：多对一配置
+		name：CstLinkman中映射一方的属性名
+		class：CstLinkman中映射一方的类型 
+		 -->
+		<many-to-one name="cstCustomer" class="cn.atcast.crm.domain.CstCustomer" >
+		
+			 <!-- name：指定cst_Linkman表中的外键 -->
+			<column name="lkm_cust_id" ></column>
+		</many-to-one>
+    </class>
+</hibernate-mapping>

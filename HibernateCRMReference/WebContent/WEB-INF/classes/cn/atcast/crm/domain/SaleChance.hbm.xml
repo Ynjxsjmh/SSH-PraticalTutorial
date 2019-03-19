@@ -1,0 +1,42 @@
+<?xml version="1.0"?>
+<!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+"http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd">
+<!-- Generated 2016-2-18 11:51:05 by Hibernate Tools 4.0.0 -->
+<hibernate-mapping>
+    <class name="cn.atcast.crm.domain.SaleChance" table="sale_chance">
+        <id name="chanId" type="string">
+            <column name="chan_id" length="32" />
+            <generator class="assigned" />
+        </id>
+        <many-to-one name="sysUser" class="cn.atcast.crm.domain.SysUser" >
+            <column name="chan_user_id"></column>
+        </many-to-one>
+        <many-to-one name="cstCustomer" class="cn.atcast.crm.domain.CstCustomer" >
+            <column name="chan_cust_id" not-null="true"></column>
+        </many-to-one>
+        <property name="chanName" type="string">
+            <column name="chan_name" length="64" not-null="true"></column>
+        </property>
+        <property name="chanMoney" type="java.lang.Integer">
+            <column name="chan_money"></column>
+        </property>
+        <property name="chanType" type="string">
+            <column name="chan_type" length="32"></column>
+        </property>
+        <property name="chanSource" type="string">
+            <column name="chan_source" length="32"></column>
+        </property>
+        <property name="chanState" type="string">
+            <column name="chan_state" length="32"></column>
+        </property>
+        <property name="chanLkmId" type="java.lang.Long">
+            <column name="chan_lkm_id"></column>
+        </property>
+        <property name="chanLinktime" type="java.util.Date">
+            <column name="chan_linktime" length="10"></column>
+        </property>
+        <property name="chanDesc" type="string">
+            <column name="chan_desc" length="1024"></column>
+        </property>
+    </class>
+</hibernate-mapping>

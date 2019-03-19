@@ -10,7 +10,7 @@
 		
 		<!-- 必须要配置的参数有5个，4大参数，数据库的方言 -->
 		<property name="hibernate.connection.driver_class">com.mysql.jdbc.Driver</property>
-		<property name="hibernate.connection.url">jdbc:mysql:///crmssh01</property>
+		<property name="hibernate.connection.url">jdbc:mysql:///crm</property>
 		<property name="hibernate.connection.username">root</property>
 		<property name="hibernate.connection.password">root</property>
 		

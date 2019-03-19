@@ -1,0 +1,26 @@
+<?xml version="1.0"?>
+<!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+"http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd">
+<!-- Generated 2016-2-18 11:51:05 by Hibernate Tools 4.0.0 -->
+<hibernate-mapping>
+    <class name="cn.atcast.crm.domain.SysRole" table="sys_role">
+        <id name="roleId" type="java.lang.Long">
+            <column name="role_id" />
+            <generator class="identity" />
+        </id>
+        <property name="roleName" type="string">
+            <column name="role_name" length="32" not-null="true"></column>
+        </property>
+        <property name="roleMemo" type="string">
+            <column name="role_memo" length="128"></column>
+        </property>
+        <set name="sysUsers" table="sys_user_role" inverse="true" >
+            <key>
+                <column name="role_id" not-null="true"></column>
+            </key>
+            <many-to-many class="cn.atcast.crm.domain.SysUser">
+                <column name="user_id" not-null="true"></column>
+            </many-to-many>
+        </set>
+    </class>
+</hibernate-mapping>

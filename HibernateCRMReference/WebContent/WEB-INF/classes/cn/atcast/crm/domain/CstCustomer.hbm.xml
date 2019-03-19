@@ -1,0 +1,91 @@
+<?xml version="1.0"?>
+<!DOCTYPE hibernate-mapping PUBLIC
+        "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+        "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
+<hibernate-mapping>
+	<!-- 
+		name：映射类的类名 
+		table：映射类对应的表名
+		catalog：数据库名，可省咯，mysql使用catalog指定数据库，如果是oralce则使用schema。
+	 -->
+    <class name="cn.atcast.crm.domain.CstCustomer" table="cst_customer" >
+        <cache usage="read-write"/>
+    	<!-- 主键映射配置
+		name:指定当前映射类中的属性id对应user表的主键
+		type：指定当前映射类中的属性id的类型
+		column：指定user表的主键为id字段
+		generator：指定主键的生成策略，identity为采用数据库的主键自增长策略，常用的还有uuid、sequence等
+ 		-->
+        <id name="custId" type="java.lang.Long">
+            <column name="cust_id" />
+            <generator class="identity" />
+        </id>
+        
+        <!-- 普通字段映射
+		 property：custName是CstCustomer类中的属性名
+		 type：指定当前映射类中的属性custName的类型
+         column：cust_name是cst_customer表中的字段名
+		 -->
+        <property name="custName" type="string">
+            <column name="cust_name" ></column>
+        </property>
+        <property name="custUserId" type="java.lang.Long">
+            <column name="cust_user_id"></column>
+        </property>
+        <property name="custCreateId" type="java.lang.Long">
+            <column name="cust_create_id"></column>
+        </property>
+
+        <property name="custIndustry" type="string">
+            <column name="cust_industry" length="32"></column>
+        </property>
+       
+        <property name="custLinkman" type="string">
+            <column name="cust_linkman" length="64"></column>
+        </property>
+        <property name="custPhone" type="string">
+            <column name="cust_phone" length="64"></column>
+        </property>
+        <property name="custMobile" type="string">
+            <column name="cust_mobile" length="16"></column>
+        </property>
+         <property name="custLevel" type="string">
+            <column name="cust_level" length="32"></column>
+        </property>
+       <many-to-one name="baseDictBySource" class="cn.atcast.crm.domain.BaseDict" fetch="select">
+            <column name="cust_source" length="32"></column>
+        </many-to-one>
+        
+        <!-- 一对多配置，一个客户对应多个联系人，联系人查询采用延迟加载 -->
+        <!-- name="cstLinkmans"：指定CstCustomer中set集合的属性名 -->
+        <set name="cstLinkmans" inverse="true" fetch="select" lazy="true" cascade="delete" >
+	        <!-- lkm_cust_id：外键名称
+				 -->
+			<key column="lkm_cust_id" />
+			<!-- one-to-many一对多关联映射
+			class：指定关联的多方类型，即CstLinkman
+			 -->
+        	<one-to-many class="cn.atcast.crm.domain.CstLinkman" />
+        </set>
+        <set name="saleVisits" table="sale_visit" >
+            <key>
+                <column name="visit_cust_id"></column>
+            </key>
+            <one-to-many class="cn.atcast.crm.domain.SaleVisit" />
+        </set>
+        <!-- 一个客户对多个商机  -->
+        <!-- <set name="saleChances" inverse="true" >
+            <key>
+                <column name="chan_cust_id" not-null="true"></column>
+            </key>
+            <one-to-many class="cn.atcast.crm.domain.SaleChance" />
+        </set> -->
+        <!--
+        constrained="false",总是会立即加载关联到的实体. 
+		如果当constrained="true",且lazy="proxy"(默认),可以延迟加载
+          -->
+       <!--  <one-to-one name="cstCustomerDetail"
+	class="cn.atcast.crm.domain.CstCustomerDetail" constrained="true" cascade="delete" >
+		</one-to-one> -->
+    </class>
+</hibernate-mapping>

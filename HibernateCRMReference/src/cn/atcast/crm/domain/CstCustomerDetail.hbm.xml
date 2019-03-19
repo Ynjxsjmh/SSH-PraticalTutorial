@@ -1,0 +1,45 @@
+<?xml version="1.0"?>
+<!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+"http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd">
+<!-- Generated 2016-2-19 14:33:20 by Hibernate Tools 4.0.0 -->
+<hibernate-mapping>
+    <class name="cn.atcast.crm.domain.CstCustomerDetail" table="cst_customer_detail" >
+        <cache usage="read-write"/>
+        <id name="custId" type="long">
+            <column name="cust_id" />
+            <generator class="assigned"/>
+        </id>
+        <!-- <one-to-one name="cstCustomer" class="cn.atcast.crm.domain.CstCustomer" constrained="true"  ></one-to-one>
+        -->
+        <property name="custRegion" type="string">
+            <column name="cust_region" length="64"></column>
+        </property>
+        <property name="custZip" type="string">
+            <column name="cust_zip" length="16"></column>
+        </property>
+        <property name="custAddress" type="string">
+            <column name="cust_address" length="128"></column>
+        </property>
+        <property name="custFax" type="string">
+            <column name="cust_fax" length="64"></column>
+        </property>
+        <property name="custWebsite" type="string">
+            <column name="cust_website" length="128"></column>
+        </property>
+        <property name="custLicence" type="string">
+            <column name="cust_licence" length="64"></column>
+        </property>
+        <property name="custCorporation" type="string">
+            <column name="cust_corporation" length="64"></column>
+        </property>
+        <property name="custCapital" type="java.lang.Long">
+            <column name="cust_capital"></column>
+        </property>
+        <property name="custBank" type="string">
+            <column name="cust_bank" length="512"></column>
+        </property>
+        <property name="custMemo" type="string">
+            <column name="cust_memo"></column>
+        </property>
+    </class>
+</hibernate-mapping>
