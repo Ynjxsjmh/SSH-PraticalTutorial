@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<!DOCTYPE hibernate-mapping PUBLIC 
+	"-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+	"http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
+
+<hibernate-mapping package="cn.atcast.b_query">
+	
+	<class name="Employee" table="t_employee">
+		<id name="empId">
+			<generator class="native"></generator>
+		</id>	
+		<property name="empName" length="20"></property>
+		<property name="salary" type="double"></property>
+		
+		<many-to-one name="dept" column="dept_id" class="Dept" fetch="join"></many-to-one>
+		 
+	</class>
+	<query name="getAllDept">
+		 <![CDATA[
+		 	from Dept d where deptId < ? 
+		 ]]>
+	</query>
+	
+
+</hibernate-mapping>
