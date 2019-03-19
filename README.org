@@ -40,6 +40,8 @@ I only track the core code in the project so that the project cloned to your com
 
 =Struts2OGNL= is an OGNL and ValueStack project.
 
+=Struts2DemoLoginRegister= shows how login and register works. Note that there is no database connection, so it doesn't complete read or write data via database. Login username and password both are 'tom', you can rewrite it if you like.
+
 ** Spring
 =SpringDemo01= uses Spring and mainly tells how object is created in Spring.
 
