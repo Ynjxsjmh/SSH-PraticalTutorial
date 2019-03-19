@@ -25,6 +25,8 @@ I only track the core code in the project so that the project cloned to your com
 
 =HibernateDemo02= introduces object's status, query and cache.
 
+=HibernateCRMHqlQbc= is what it's name describes.
+
 ** Structs2
 =Struts2SimplestDemo= is just a project with pure Struts2. If you understand this demo, you can grasp half of the knowledge of Struts2.
 
