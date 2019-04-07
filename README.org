@@ -7,7 +7,7 @@ This a repo to store the SSH projects my teacher taught me.
 - MySQL
 - Eclipse
 
-To run the project I offered, you need to add tomcat lib jar files to the existing projects. Steps to do that are =Right click on your project name -> Build Path -> Configure Build Path -> Tab **Libraries** -> Add Library -> Server Run Time -> Apache Tomcat= 。
+To run the project I offered, you need to add tomcat lib jar files to the existing projects. Steps to do that are =Right click on your project name -> Build Path -> Configure Build Path -> Tab *Libraries* -> Add Library -> Server Run Time -> Apache Tomcat= 。
 
 Then you should modify the MySQL password.
 
@@ -42,22 +42,22 @@ I only track the core code in the project so that the project cloned to your com
 
 =Struts2DemoLoginRegister= shows how login and register works. Note that there is no database connection, so it doesn't complete read or write data via database. Login username and password both are 'tom', you can rewrite it if you like.
 
-=Struts2CRM02= completes add user funtion.
+=Struts2CRM02= completes add user function.
 
 ** Spring
 =SpringDemo01= uses Spring and mainly tells how object is created in Spring.
 
-=SpringDemo02= shows some demo on proxy pattern and AOP programming.
+=SpringDemo02= shows some demos on proxy pattern and AOP programming.
 
 =SpringDemo03= is the three implements of declarative transaction control.
 
-In =SpringHibernate01= , SessionFactory of Hibernate is created by Spring.
+In =SpringHibernate01= , SessionFactory in Hibernate is created by Spring.
 
 In =SpringHibernate02= , transaction in Hibernate is handed over to Spring's declarative transaction.
 
 =SpringCRM01= is an easy project which combines Spring and Struts.
 
 ** SSH
-=SpringCRM02= is the initial intergration of the SSH framework. Don't be fooled by it's name. It only implements add customer funtion.
+=SpringCRM02= is the initial intergration of the SSH framework. Don't be fooled by it's name. It only implements add customer function.
 
-Note that all the SpringDemo* are Java projects, you also need to import the all the jars in =lib= folder to the project by following =Right click on your project name -> Build Path -> Configure Build Path -> Tab **Libraries** -> Add JARs -> Choose all the jars in your project's lib folder= 
+Note that all the =SpringDemo*= are Java projects, you also need to import the all the jars in =lib= folder to the project by following =Right click on your project name -> Build Path -> Configure Build Path -> Tab *Libraries* -> Add JARs -> Choose all the jars in your project's lib folder= 
