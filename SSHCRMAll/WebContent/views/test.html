@@ -1,0 +1,64 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>客户信息管理</title>
+<link rel="stylesheet" type="text/css" href="../ui/themes/default/easyui.css">
+<link rel="stylesheet" type="text/css" href="../ui/themes/icon.css">
+<script type="text/javascript" src="../ui/jquery.min.js"></script>
+<script type="text/javascript" src="../ui/jquery.easyui.min.js"></script>
+<script type="text/javascript" src="../ui/locale/easyui-lang-zh_CN.js"></script>
+<!-- 在预加载方法，初始化datagrid -->
+<script type="text/javascript">
+//定义columns列，根据rows中数据内容去定义
+var columns_v=[[
+                
+	{field:'code',title:'代码',width:120},
+	{field:'name',title:'名称',width:120},
+	{field:'opt1',title:'操作',width:120,
+		//在加载datagrid数据生成html串，如果遇到formatter优先调用formatter生成单元格的内容
+		//形参：value：根据field从rows中取出的单元中的值
+		//形参：row：每一行的数据
+		//形参：index，第一行的下标序号
+		formatter: function(value,row,index){
+			return '<a href="edit.action?id=">修改</a>';
+		}
+	}
+                
+    ]];
+                
+//定义工具栏
+var toolbar_v=[
+               {
+					id:'btnadd',//按钮 的id
+					text:'添加',
+					iconCls:'icon-add',
+					handler:function(){//点击按钮 执行事件
+						alert('add')
+					}
+               }
+               ];
+$(function(){
+	//加载datagrid
+	$('#test').datagrid({
+		title:'客户信息列表',//数据列表标题
+		url:'datagrid_data.json',
+		idField:'code',//此字段很重要，数据结果集的唯一约束字段key
+		columns:columns_v,
+		pagination:true,//是否显示分页
+		rownumbers:true,//是否显示行号
+		toolbar:toolbar_v
+	});
+	
+	});
+	
+	
+</script>
+</head>
+
+
+<body>
+
+<table id="test"></table>
+</body>
+</html>

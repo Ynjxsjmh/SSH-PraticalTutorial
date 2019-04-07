@@ -1,0 +1,20 @@
+{
+   "menus" : [{"icon" : "icon-sys","menuid" : "1","menuname" : "客户管理","url" : "","menus" : [
+                 {"icon" : "icon-log","menuid" : "1_1","menuname" : "客户列表","url" : "views/customer.html"
+                 },
+                 {"icon" : "icon-log","menuid" : "1_1","menuname" : "客户拜访","url" : "views/salevisit.html"
+                 }
+                ]
+               },
+               {"icon" : "icon-sys","menuid" : "1","menuname" : "统计分析","url" : "","menus" : [
+                 {"icon" : "icon-log","menuid" : "1_1","menuname" : "客户分类统计","url" : "views/customerstat.html"
+                 }
+                ]
+               },
+               {"icon" : "icon-sys","menuid" : "1","menuname" : "测试","url" : "","menus" : [
+                 {"icon" : "icon-log","menuid" : "1_1","menuname" : "test.action","url" : "test.action?custId=94"
+                 }
+                ]
+               }
+             ]
+}

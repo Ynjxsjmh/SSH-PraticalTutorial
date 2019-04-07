@@ -1,0 +1,319 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>客户拜访</title>
+<link rel="stylesheet" type="text/css" href="../ui/themes/default/easyui.css">
+<link rel="stylesheet" type="text/css" href="../ui/themes/icon.css">
+<script type="text/javascript" src="../ui/jquery.min.js"></script>
+<script type="text/javascript" src="../ui/jquery.easyui.min.js"></script>
+<script type="text/javascript" src="../ui/locale/easyui-lang-zh_CN.js"></script>
+
+<script type="text/javascript">
+$(function(){
+	
+	var columns=[[
+				{field:'sysUser.userName',title:'业务员',width:100,formatter:function(value,row,index){
+	  		    	if(row.sysUser){
+	  		    		return row.sysUser.userName;
+	  		    	}}
+				},
+	  		    {field:'cstCustomer.custName',title:'客户名称',width:100,formatter:function(value,row,index){
+	  		    	if(row.cstCustomer){
+	  		    		return row.cstCustomer.custName;
+	  		    	}}
+				},
+	  		   
+	  		   {field:'custLevel',title:'客户级别',width:100,formatter:function(value,row,index){
+	  		    	if(row.cstCustomer && row.cstCustomer.baseDictByCustLevel){
+	  		    		return row.cstCustomer.baseDictByCustLevel.dictItemName;
+	  		    	}}
+	  		    },
+	  		  {field:'visitTime',title:'拜访时间',width:120},
+	  		  {field:'visitAddr',title:'拜访地点',width:200},
+	  		 {field:'visitDetail',title:'内容',width:300},
+	  		  {field:'visitNexttime',title:'下次拜访时间',width:120},
+			    {field:'-',title:'操作',width:100,formatter:function(value,row,index){
+			    		return "<a href='#' onclick='edit(\""+row.visitId+"\")'>修改</a> <a href='#' onclick='del(\""+row.visitId+"\")'>删除</a>";
+			    	}
+	  		  }		    
+			  ]];
+	//加载datagrid
+	$('#grid').datagrid({
+		url:'../salevisit/list.action',
+		columns:columns,
+		pagination:true,
+		singleSelect:true,
+		toolbar: [{
+			iconCls: 'icon-add',
+			text:'增加',
+			handler: add
+		}]
+
+	});
+
+	//添加客户拜访下拉框
+	$('#cstCustomer_custId').combogrid({
+		panelWidth:450,
+		mode:'remote',
+		delay:1000,
+		idField:'custId',
+		textField:'custName',
+		url:'../customer/searchByName.action',
+		columns:[[
+			{field:'custName',title:'客户名称',width:100},
+	  		    {field:'custSource',title:'客户来源',width:100,formatter:function(value,row,index){
+	  		    	if(row.baseDictByCustSource){
+	  		    		return row.baseDictByCustSource.dictItemName;
+	  		    	}
+	  		    }},
+	  		    {field:'custIndustry',title:'所属行业',width:100,formatter:function(value,row,index){
+	  		    	if(row.baseDictByCustIndustry){
+	  		    		return row.baseDictByCustIndustry.dictItemName;
+	  		    	}
+	  		    }},
+	  		   {field:'custLevel',title:'客户级别',width:100,formatter:function(value,row,index){
+	  		    	if(row.baseDictByCustLevel){
+	  		    		return row.baseDictByCustLevel.dictItemName;
+	  		    	}
+	  		    }},
+	  		  {field:'custPhone',title:'固定电话',width:100},
+	  		  {field:'custMobile',title:'移动电话',width:100}
+		]]
+	});
+	
+	//添加客户拜访下拉框
+	$('#sysUser_userId').combogrid({
+		panelWidth:250,
+		mode:'remote',
+		delay:1000,
+		idField:'userId',
+		textField:'userName',
+		url:'../user/searchByName.action',
+		columns:[[
+			{field:'userCode',title:'用户账号',width:100},
+			{field:'userName',title:'用户名称',width:100}
+		]]
+	});
+	
+});
+
+//操作方法
+var method;
+//保存客户
+function save(){
+	if(method == 'add'){
+		//添加客户提交
+		addsubmit();
+		
+	}else{
+		//修改客户提交
+		editsubmit();
+	}
+}
+//新增客户
+function add(){
+	$('#visitForm').form('clear');
+	$('#visitWindow').window({modal: true});
+	$('#visitWindow').window('open');	
+	//当前操作方法为添加
+	method="add";
+
+}
+/**
+ * 修改 页面
+ */
+function edit(visitId)
+{
+	$('#visitForm').form('clear');
+	$('#visitForm').form('load','../salevisit/getById.action?visitId='+visitId);
+	$('#visitWindow').window({modal: true});
+	$('#visitWindow').window('open');
+	method="update";
+
+}
+//新增客户提交
+function addsubmit(){
+	
+	//绑定添加客户保存按钮
+		//alert(0);
+		//var formData=getFormData('addCustomerForm');
+		/* $.ajax({
+			url:'../customer/add.action',
+			data:formData,
+			type:'post',
+			dataType:'json',
+			success:function(value)
+			{
+				alert(value);
+				if(value.success)
+				{					
+					$('#formWindow').window('close');
+					$('#grid').datagrid('reload');
+				}
+				$.messager.alert('提示',value.message);				
+			}
+		});	 */
+		$('#visitForm').form('submit',{    
+			url:'../salevisit/add.action',
+		    onSubmit: function(){    
+		        // do some check    
+		        // return false to prevent submit;    
+		    },    
+		    success:function(data){
+		    	var data = eval('(' + data + ')');  // 将json串转为js对象 
+		    	if(data.success)
+				{					
+					$('#visitWindow').window('close');
+					$('#grid').datagrid('reload');
+				}
+				$.messager.alert('提示',data.message);		
+		    }    
+		});    
+		// submit the form    
+		//$('#addCustomerForm').submit();  
+	
+}
+//修改提交
+function editsubmit()
+{
+		 $('#visitForm').form('submit',{    
+			url:'../salevisit/update.action',
+		    onSubmit: function(){    
+		        // do some check    
+		        // return false to prevent submit;    
+		    },    
+		    success:function(data){
+		    	var data = eval('(' + data + ')');  // 将json串转为js对象 
+		    	if(data.success)
+				{					
+		    		$('#visitWindow').window('close');
+					$('#grid').datagrid('reload');
+				}
+				$.messager.alert('提示',data.message);		
+		    }    
+		});   
+
+		 
+}
+//删除
+function del(visitId){
+	$.messager.confirm("提示","确定要删除吗？",function(value){
+		if(value)
+		{
+			//alert(custId);
+			$.ajax({
+				url:'../salevisit/delete.action?visitId='+visitId,
+				dataType:'json',
+				success:function(value)
+				{
+					$.messager.alert('提示',value.message);
+					if(value.success)
+					{
+						$('#grid').datagrid('reload');
+					}			
+				}				
+			});	
+		}
+	});
+	
+	
+}
+//查询
+function query(){
+	var formData=getFormData('searchForm');
+	$('#grid').datagrid('load',formData);	
+}
+
+/**
+ * 将表单数据封装为json
+ * @param form
+ * @returns
+ */
+function getFormData(form) {  
+    var formValues = $("#" + form).serialize();  
+  
+    //关于jquery的serialize方法转换空格为+号的解决方法  
+    formValues = formValues.replace(/\+/g," ");   // g表示对整个字符串中符合条件的都进行替换  
+    var temp =  decodeURIComponent(JSON.stringify(conveterParamsToJson(formValues)));  
+    var queryParam = JSON.parse(temp);  
+    return queryParam;  
+}  
+function conveterParamsToJson(paramsAndValues) {  
+    var jsonObj = {};  
+  
+    var param = paramsAndValues.split("&");  
+    for ( var i = 0; param != null && i < param.length; i++) {  
+        var para = param[i].split("=");  
+        jsonObj[para[0]] = para[1];  
+    }  
+  
+    return jsonObj;  
+}  
+</script>
+</head>
+<body>
+<div class="easyui-panel">
+<form id="searchForm">
+     <table cellpadding="5">
+     	<tr>
+     		<td>客户名称：</td>
+     		<td><input name="cstCustomer.custName" /></td>
+     		<td>客户级别：</td>
+     		<td><input name="cstCustomer.baseDictByCustLevel.dictId" class="easyui-combobox" data-options="url:'../system/dictListByType.action?typecode=006',textField:'dictItemName',valueField:'dictId',editable:false"/></td>
+     		<td>拜访时间(起)：</td>
+     		<td><input name="visitTime_start" class="easyui-datetimebox"/></td>
+     		<td>拜访时间(止)：</td>
+     		<td><input name="visitTime_end" class="easyui-datetimebox"/></td>
+     	</tr>
+     </table>
+
+	<button type="button" id="btnSearch" onclick="query()">查询</button>
+</form>
+</div>
+<table id="grid"></table>
+
+<div id="visitWindow" class="easyui-window" title="客户信息" 
+	style="width: 550px;height: 300px" data-options="closed:true">
+	<form id="visitForm" method="post">
+	     <input name="visitId" type="hidden"> 
+		  <table cellpadding="5">
+		  	<tr>
+		  		<td>客户:</td>
+		  		<td>
+		  			  		
+		  		<select id="cstCustomer_custId" name="cstCustomer.custId" style="width:150px;"></select>
+		  		
+		  		</td>
+		  		<td>业务员:</td>
+		  		<td>
+		  		    <select id="sysUser_userId" name="sysUser.userId" style="width:150px;"></select>
+		  		</td>
+		  	</tr>
+		  	<tr>
+		  		<td>被拜访人:</td>
+		  		<td><input name="visitInterviewee" style="width:150px;"/></td>
+		  		<td>拜访时间:</td>
+		  		<td><input name="visitTime" class="easyui-datetimebox" style="width:150px;"/></td>
+		  	</tr>
+		  	<tr>
+		  		<td>拜访地址:</td>
+		  		<td colspan="3"><input name="visitAddr" style="width:400px;"/></td>
+		  	</tr>
+		  	<tr>
+		  		<td>内容:</td>
+		  		<td colspan="3"><input name="visitDetail" style="width:400px;"/></td>
+		  	</tr>
+		  		<tr>
+		  		<td>下次拜访时间:</td>
+		  		<td colspan="3"><input name="visitNexttime" class="easyui-datetimebox" style="width:150px;"/></td>
+		  	</tr>
+		  	<tr>
+		  		<td colspan="4"><button id="customerBtn" type="button" onclick="save()">保存</button></td>
+		  	</tr>
+		  </table>
+	</form>
+</div>
+
+</body>
+</html>

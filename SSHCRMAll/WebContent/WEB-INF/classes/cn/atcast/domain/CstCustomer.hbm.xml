@@ -1,0 +1,54 @@
+<?xml version="1.0"?>
+<!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+"http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
+<!-- Generated 2016-3-7 15:22:16 by Hibernate Tools 4.3.1.Final -->
+<hibernate-mapping>
+    <class name="cn.atcast.domain.CstCustomer" table="cst_customer"  optimistic-lock="version">
+        <id name="custId" type="java.lang.Long">
+            <column name="cust_id" />
+            <generator class="identity" />
+        </id>
+        <many-to-one name="baseDictByCustSource" class="cn.atcast.domain.BaseDict" fetch="join">
+            <column name="cust_source" length="32"></column>
+        </many-to-one>
+        <many-to-one name="baseDictByCustLevel" class="cn.atcast.domain.BaseDict" fetch="join">
+            <column name="cust_level" length="32"></column>
+        </many-to-one>
+        <many-to-one name="baseDictByCustIndustry" class="cn.atcast.domain.BaseDict" fetch="join">
+            <column name="cust_industry" length="32"></column>
+        </many-to-one>
+        <many-to-one name="sysUserByCustUserId" class="cn.atcast.domain.SysUser" fetch="join">
+            <column name="cust_user_id"></column>
+        </many-to-one>
+        <many-to-one name="sysUserByCustCreateId" class="cn.atcast.domain.SysUser" fetch="join">
+            <column name="cust_create_id"></column>
+        </many-to-one>
+        <property name="custName" type="string">
+            <column name="cust_name" length="32" not-null="true"></column>
+        </property>
+        <property name="custLinkman" type="string">
+            <column name="cust_linkman" length="64"></column>
+        </property>
+        <property name="custPhone" type="string">
+            <column name="cust_phone" length="64"></column>
+        </property>
+        <property name="custMobile" type="string">
+            <column name="cust_mobile" length="16"></column>
+        </property>
+        <property name="custCreatetime" type="timestamp">
+            <column name="cust_createtime" length="19"></column>
+        </property>
+        <set name="saleVisits" table="sale_visit" inverse="true" lazy="true" fetch="select">
+            <key>
+                <column name="visit_cust_id"></column>
+            </key>
+            <one-to-many class="cn.atcast.domain.SaleVisit" />
+        </set>
+        <set name="cstLinkmans" table="cst_linkman" inverse="true" lazy="true" fetch="select" cascade="delete">
+            <key>
+                <column name="lkm_cust_id" not-null="true"></column>
+            </key>
+            <one-to-many class="cn.atcast.domain.CstLinkman" />
+        </set>
+    </class>
+</hibernate-mapping>

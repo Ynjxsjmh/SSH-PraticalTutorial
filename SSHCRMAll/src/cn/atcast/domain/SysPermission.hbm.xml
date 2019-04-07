@@ -1,0 +1,41 @@
+<?xml version="1.0"?>
+<!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+"http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
+<!-- Generated 2016-3-7 15:22:16 by Hibernate Tools 4.3.1.Final -->
+<hibernate-mapping>
+    <class name="cn.atcast.domain.SysPermission" table="sys_permission" optimistic-lock="version">
+        <id name="permId" type="java.lang.Long">
+            <column name="perm_id" />
+            <generator class="identity" />
+        </id>
+        <property name="permName" type="string">
+            <column name="perm_name" length="64" not-null="true"></column>
+        </property>
+        <property name="permParentid" type="java.lang.Long">
+            <column name="perm_parentid"></column>
+        </property>
+        <property name="permLevel" type="string">
+            <column name="perm_level" length="1"></column>
+        </property>
+        <property name="permUrl" type="string">
+            <column name="perm_url" length="256"></column>
+        </property>
+        <property name="permOrder" type="java.lang.Long">
+            <column name="perm_order"></column>
+        </property>
+        <property name="permIsmenu" type="string">
+            <column name="perm_ismenu" length="1"></column>
+        </property>
+        <property name="permIsused" type="string">
+            <column name="perm_isused" length="1"></column>
+        </property>
+        <set name="sysRoles" table="sys_role_permission" inverse="true" lazy="true" fetch="select">
+            <key>
+                <column name="perm_id" not-null="true" />
+            </key>
+            <many-to-many entity-name="cn.atcast.domain.SysRole">
+                <column name="role_id" not-null="true" />
+            </many-to-many>
+        </set>
+    </class>
+</hibernate-mapping>

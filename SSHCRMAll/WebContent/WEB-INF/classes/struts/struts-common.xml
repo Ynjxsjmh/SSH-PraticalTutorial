@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE struts PUBLIC
+    "-//Apache Software Foundation//DTD Struts Configuration 2.3//EN"
+    "http://struts.apache.org/dtds/struts-2.3.dtd">
+    
+    <struts>
+    
+    	<!-- 配置常量  -->
+    	<!-- 字符集 -->
+    	<constant name="struts.i18n.encoding" value="UTF-8"></constant>
+    	<!-- 开发模式 -->
+    	<constant name="struts.devMode" value="true"></constant>
+    	<!-- 主题 -->
+		<constant name="struts.ui.theme" value="simple"></constant>
+		<!-- 扩展名 -->
+		<constant name="struts.action.extension" value="action"></constant>
+
+
+		<!-- 上传文件大小最大为4M -->
+		<constant name="struts.multipart.maxSize" value="2097152"></constant>
+		
+    	<!-- 通用package -->
+    	<package name="common" namespace="/" extends="struts-default">
+    		<!-- 配置拦截器 -->
+    		<interceptors>
+    			<!-- 定义拦截器 -->
+    			<interceptor name="exceptionInterceptor" class="cn.atcast.web.interceptor.ExceptionInterceptor"></interceptor>
+    			<!-- 定义拦截器栈 -->
+    			<interceptor-stack name="customInterceptor">
+    				<interceptor-ref name="exceptionInterceptor"/>
+    				<interceptor-ref name="defaultStack"/>
+    			</interceptor-stack>
+    		</interceptors>
+    		<!-- common包下或子包下action都由customInterceptor中拦截器拦截 -->
+    		<default-interceptor-ref name="customInterceptor"></default-interceptor-ref>
+    	     <!-- 全局结果 -->
+    		<!-- <global-results>
+    			<result name="success">/jsp/success.jsp</result>
+    			<result name="error">/jsp/error.jsp</result>
+    			全局的input视图
+    			<result name="input">/jsp/error.jsp</result>
+    		</global-results> -->
+    		
+    		<action name="test" class="customerAction" method="test">
+    			<result name="test">/test.jsp</result>
+    		</action>
+    		
+    	</package>
+
+    </struts>
+    
+    

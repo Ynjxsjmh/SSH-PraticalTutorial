@@ -1,0 +1,78 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>客户统计</title>
+<link rel="stylesheet" type="text/css" href="../ui/themes/default/easyui.css">
+<link rel="stylesheet" type="text/css" href="../ui/themes/icon.css">
+<script type="text/javascript" src="../ui/jquery.min.js"></script>
+<script type="text/javascript" src="../ui/jquery.easyui.min.js"></script>
+<script type="text/javascript" src="../ui/locale/easyui-lang-zh_CN.js"></script>
+<script type="text/javascript" src="../js/custom.js"></script>
+
+<script type="text/javascript">
+	//定义column
+	var columns_v = [[
+		{field:'dict_item_name',title:'客户分类',width:100},
+		{field:'COUNT',title:'数量',width:100}
+	    
+	 ]];
+	
+	//加载datagrid，需要定义columns
+	$(function(){
+		//加载datagrid
+		$('#grid').datagrid({
+			title:'客户统计列表',//数据列表标题
+			url:'../customer/statlist.action',
+			idField:'dict_item_name',//此字段很重要，数据结果集的唯一约束字段key
+			columns:columns_v,
+			pagination:true,//是否显示分页
+			pageList:[10,20,30,40,50],
+			pageSize:10,//初始每页显示记录数
+			rownumbers:true
+		});
+	
+	});
+//自定义条件查询
+function query(){
+	//load方法向加载datagrid方法定义的url发送数据
+	
+	/* $('#grid').datagrid('load',{
+		custName: '黑马程序员'
+	}); */
+	//查询条件在form表单，需要将form表单中的数据格化成json数据，传给load
+	//将form表单中输入框中值格化成json数据，使用工具类
+	var formdata = getFormData('searchForm');
+	
+	 $('#grid').datagrid('load',formdata); 
+}
+
+</script>
+</head>
+<body>
+<!-- 查询条件 -->
+<div class="easyui-panel">
+<form id="searchForm">
+			<table cellpadding="5">
+				<tr>
+					<td>统计分类 ：</td>
+					<td>
+					<select name="customerClass">
+						<option value="">请选择</option>
+						<option value="cust_source">客户来源</option>
+						<option value="cust_level">客户级别</option>
+					</select>
+					</td>
+					
+				</tr>
+			</table>
+
+			<button type="button" id="btnSearch" onclick="query()">查询</button>
+</form>
+</div>
+<!-- 客户信息列表 -->
+<table id="grid"></table>
+
+
+</body>
+</html>

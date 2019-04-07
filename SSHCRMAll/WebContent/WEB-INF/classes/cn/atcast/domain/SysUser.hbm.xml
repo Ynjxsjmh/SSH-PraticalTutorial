@@ -1,0 +1,50 @@
+<?xml version="1.0"?>
+<!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+"http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
+<!-- Generated 2016-3-7 15:22:16 by Hibernate Tools 4.3.1.Final -->
+<hibernate-mapping>
+    <class name="cn.atcast.domain.SysUser" table="sys_user"  optimistic-lock="version">
+        <id name="userId" type="java.lang.Long">
+            <column name="user_id" />
+            <generator class="identity" />
+        </id>
+        <property name="userCode" type="string">
+            <column name="user_code" length="32" not-null="true"></column>
+        </property>
+        <property name="userName" type="string">
+            <column name="user_name" length="64" not-null="true"></column>
+        </property>
+        <property name="userPassword" type="string">
+            <column name="user_password" length="32" not-null="true"></column>
+        </property>
+        <property name="userState" type="string">
+            <column name="user_state" length="1" not-null="true"></column>
+        </property>
+        <set name="saleVisits" table="sale_visit" inverse="true" lazy="true" fetch="select">
+            <key>
+                <column name="visit_user_id"></column>
+            </key>
+            <one-to-many class="cn.atcast.domain.SaleVisit" />
+        </set>
+        <set name="sysRoles" table="sys_user_role" inverse="true" lazy="true" fetch="select">
+            <key>
+                <column name="user_id" not-null="true"></column>
+            </key>
+            <many-to-many entity-name="cn.atcast.domain.SysRole">
+                <column name="role_id" not-null="true"></column>
+            </many-to-many>
+        </set>
+        <set name="cstCustomersForCustUserId" table="cst_customer" inverse="true" lazy="true" fetch="select">
+            <key>
+                <column name="cust_user_id"></column>
+            </key>
+            <one-to-many class="cn.atcast.domain.CstCustomer" />
+        </set>
+        <set name="cstCustomersForCustCreateId" table="cst_customer" inverse="true" lazy="true" fetch="select">
+            <key>
+                <column name="cust_create_id"></column>
+            </key>
+            <one-to-many class="cn.atcast.domain.CstCustomer" />
+        </set>
+    </class>
+</hibernate-mapping>

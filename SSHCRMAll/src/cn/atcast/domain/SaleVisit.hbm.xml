@@ -1,0 +1,33 @@
+<?xml version="1.0"?>
+<!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+"http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
+<!-- Generated 2016-3-7 15:22:16 by Hibernate Tools 4.3.1.Final -->
+<hibernate-mapping>
+    <class name="cn.atcast.domain.SaleVisit" table="sale_visit" optimistic-lock="version">
+        <id name="visitId" type="string">
+            <column name="visit_id" length="32" />
+            <generator class="uuid" />
+        </id>
+        <many-to-one name="cstCustomer" class="cn.atcast.domain.CstCustomer" fetch="select">
+            <column name="visit_cust_id"></column>
+        </many-to-one>
+        <many-to-one name="sysUser" class="cn.atcast.domain.SysUser" fetch="select">
+            <column name="visit_user_id"></column>
+        </many-to-one>
+        <property name="visitInterviewee" type="string">
+            <column name="visit_interviewee" length="32"></column>
+        </property>
+        <property name="visitTime" type="java.util.Date">
+            <column name="visit_time" length="10"></column>
+        </property>
+        <property name="visitAddr" type="string">
+            <column name="visit_addr" length="128"></column>
+        </property>
+        <property name="visitDetail" type="string">
+            <column name="visit_detail" length="256"></column>
+        </property>
+        <property name="visitNexttime" type="java.util.Date">
+            <column name="visit_nexttime" length="10"></column>
+        </property>
+    </class>
+</hibernate-mapping>

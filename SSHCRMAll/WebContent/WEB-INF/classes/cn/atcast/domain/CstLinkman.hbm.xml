@@ -1,0 +1,39 @@
+<?xml version="1.0"?>
+<!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+"http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
+<!-- Generated 2016-3-7 15:22:16 by Hibernate Tools 4.3.1.Final -->
+<hibernate-mapping>
+    <class name="cn.atcast.domain.CstLinkman" table="cst_linkman" optimistic-lock="version">
+        <id name="lkmId" type="java.lang.Long">
+            <column name="lkm_id" />
+            <generator class="identity" />
+        </id>
+        <many-to-one name="cstCustomer" class="cn.atcast.domain.CstCustomer" fetch="select" >
+            <column name="lkm_cust_id" not-null="true"></column>
+        </many-to-one>
+        <property name="lkmName" type="string">
+            <column name="lkm_name" length="16"></column>
+        </property>
+        <property name="lkmGender" type="string">
+            <column name="lkm_gender" length="1"></column>
+        </property>
+        <property name="lkmPhone" type="string">
+            <column name="lkm_phone" length="16"></column>
+        </property>
+        <property name="lkmMobile" type="string">
+            <column name="lkm_mobile" length="16"></column>
+        </property>
+        <property name="lkmEmail" type="string">
+            <column name="lkm_email" length="64"></column>
+        </property>
+        <property name="lkmQq" type="string">
+            <column name="lkm_qq" length="16"></column>
+        </property>
+        <property name="lkmPosition" type="string">
+            <column name="lkm_position" length="16"></column>
+        </property>
+        <property name="lkmMemo" type="string">
+            <column name="lkm_memo" length="512"></column>
+        </property>
+    </class>
+</hibernate-mapping>

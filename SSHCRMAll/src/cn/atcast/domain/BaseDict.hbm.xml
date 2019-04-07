@@ -1,0 +1,34 @@
+<?xml version="1.0"?>
+<!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+"http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
+<!-- Generated 2016-3-7 15:22:16 by Hibernate Tools 4.3.1.Final -->
+<hibernate-mapping>
+    <class name="cn.atcast.domain.BaseDict" table="base_dict"  optimistic-lock="version">
+        <id name="dictId" type="string">
+            <column name="dict_id" length="32" />
+            <generator class="assigned" />
+        </id>
+        <property name="dictTypeCode" type="string">
+            <column name="dict_type_code" length="10" not-null="true"></column>
+        </property>
+        <property name="dictTypeName" type="string">
+            <column name="dict_type_name" length="64" not-null="true"></column>
+        </property>
+        <property name="dictItemName" type="string">
+            <column name="dict_item_name" length="64" not-null="true"></column>
+        </property>
+        <property name="dictItemCode" type="string">
+            <column name="dict_item_code" length="10"></column>
+        </property>
+        <property name="dictSort" type="java.lang.Integer">
+            <column name="dict_sort"></column>
+        </property>
+        <property name="dictEnable" type="string">
+            <column name="dict_enable" length="1" not-null="true"></column>
+        </property>
+        <property name="dictMemo" type="string">
+            <column name="dict_memo" length="64"></column>
+        </property>
+        
+    </class>
+</hibernate-mapping>

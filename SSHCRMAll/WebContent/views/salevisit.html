@@ -1,0 +1,214 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>客户拜访</title>
+<link rel="stylesheet" type="text/css" href="../ui/themes/default/easyui.css">
+<link rel="stylesheet" type="text/css" href="../ui/themes/icon.css">
+<script type="text/javascript" src="../ui/jquery.min.js"></script>
+<script type="text/javascript" src="../ui/jquery.easyui.min.js"></script>
+<script type="text/javascript" src="../ui/locale/easyui-lang-zh_CN.js"></script>
+<script type="text/javascript" src="../js/custom.js"></script>
+
+<script type="text/javascript">
+//定义列
+var columns=[[
+				{field:'sysUser.userName',title:'业务员',width:100,formatter:function(value,row,index){
+	  		    	if(row.sysUser){
+	  		    		return row.sysUser.userName;
+	  		    	}}
+				},
+	  		    {field:'cstCustomer.custName',title:'客户名称',width:100,formatter:function(value,row,index){
+	  		    	if(row.cstCustomer){
+	  		    		return row.cstCustomer.custName;
+	  		    	}}
+				},
+	  		   
+	  		   {field:'custLevel',title:'客户级别',width:100,formatter:function(value,row,index){
+	  		    	if(row.cstCustomer && row.cstCustomer.baseDictByCustLevel){
+	  		    		return row.cstCustomer.baseDictByCustLevel.dictItemName;
+	  		    	}}
+	  		    },
+	  		  {field:'visitTime',title:'拜访时间',width:120},
+	  		  {field:'visitAddr',title:'拜访地点',width:200},
+	  		 {field:'visitDetail',title:'内容',width:300},
+	  		  {field:'visitNexttime',title:'下次拜访时间',width:120},
+			    {field:'-',title:'操作',width:100,formatter:function(value,row,index){
+			    		return "<a href='#' onclick='edit(\""+row.visitId+"\")'>修改</a> <a href='#' onclick='del(\""+row.visitId+"\")'>删除</a>";
+			    	}
+	  		  }		    
+			  ]];
+$(function(){
+	
+	
+	//加载datagrid
+	$('#grid').datagrid({
+		url:'../salevisit/list.action',
+		columns:columns,
+		pagination:true,
+		pageSize:10,
+		pageList:[10,20,30,40,50],
+		singleSelect:true,
+		toolbar: [{
+			iconCls: 'icon-add',
+			text:'增加',
+			handler: add
+		}]
+
+	});
+	
+	//加载combogrid组件
+	
+	$('#cstCustomer_custId').combogrid({
+		panelWidth:450,//下拉面板宽度
+		value:'',//默认下拉框值
+		mode:'remote',//重点，改为远程获取数据方式，当在下拉框中输入关键字，向url请求json，同时向服务端请求名称为q的参数（搜索的关键字）
+		delay:1000,//最后一次输入事件与执行搜索之间的延迟间隔，此参数影响性能，不易过小
+		idField:'custId',//datagrid的json数据中维一标签列
+		textField:'custName',//在下拉框显示的值，对应的datagrid的json数据中列
+		url:'../customer/searchCustomerByName.action',//请求服务端url，获取json数据，json数据格式是datagrid要求的格式
+		columns:[[//定义datagrid的列
+		        {field:'custName',title:'客户名称',width:100},
+		  	    {field:'custSource',title:'客户来源',width:100,formatter:function(value,row,index){
+		  	    	if(row.baseDictByCustSource){
+		  	    		return row.baseDictByCustSource.dictItemName;
+		  	    	}
+		  	    }}
+		]]
+	});
+	
+	
+	$('#sysUser_userId').combogrid({
+		panelWidth:450,//下拉面板宽度
+		value:'',//默认下拉框值
+		mode:'remote',//重点，改为远程获取数据方式，当在下拉框中输入关键字，向url请求json，同时向服务端请求名称为q的参数（搜索的关键字）
+		delay:1000,//最后一次输入事件与执行搜索之间的延迟间隔，此参数影响性能，不易过小
+		idField:'userId',//datagrid的json数据中维一标签列
+		textField:'userName',//在下拉框显示的值，对应的datagrid的json数据中列
+		url:'../system/searchSysUserByName.action',//请求服务端url，获取json数据，json数据格式是datagrid要求的格式
+		columns:[[//定义datagrid的列
+		        {field:'userName',title:'用户名称',width:100},
+		        {field:'userState',title:'用户状态',width:100}
+		        
+		]]
+	});
+});
+//查询
+function query(){
+	
+	//将form中查询条件拼装 成json数据
+	var formdata = getFormData('searchForm');
+	
+	//调用datagrid的load方法，重新加载datagrid
+	 $('#grid').datagrid('load',formdata); 
+}
+//标记，当前执行的是添加还是更新
+var methodtag;
+//添加客户拜访
+function add(){
+	//打开添加窗口时设置标记为add
+	methodtag = 'add';
+	//打开窗口
+	$('#visitWindow').window({modal: true});
+	$('#visitWindow').window('open');
+	//清理表单
+	$('#visitForm').form('clear');
+}
+//保存
+function save(){
+	if(methodtag == 'add'){
+		addsubmit();
+	}
+}
+//添加提示方法
+function addsubmit(){
+	//设置form的action属性
+	$('#visitForm').attr("action",'../salevisit/addsubmit.action');
+	 $('#visitForm').form('submit', {    
+		    success: function(data){    
+		        var result = eval('(' + data + ')');  // change the JSON string to javascript object    
+		      //提示操作结果
+		    	$.messager.alert('提示',result.message);
+		    	//如果删除成功刷新 列表
+		    	
+		    	if(result.success){
+		    		//刷新 datagrid
+		    		//方法1，调用 query()
+		    		//方法2，调用datagrid的reload方法
+		    		$('#grid').datagrid('reload'); 
+		    		//关闭窗口
+		    		$('#visitWindow').window('close');
+		    	}    
+		    }    
+		});  
+
+	
+
+
+}
+</script>
+</head>
+<body>
+<div class="easyui-panel">
+<form id="searchForm">
+     <table cellpadding="5">
+     	<tr>
+     		<td>客户名称：</td>
+     		<td><input name="cstCustomer.custName" /></td>
+     		<td>客户级别：</td>
+     		<td><input name="cstCustomer.baseDictByCustLevel.dictId" class="easyui-combobox" data-options="url:'../system/findBaseDictByTypecode.action?dictTypeCode=006',textField:'dictItemName',valueField:'dictId',editable:false"/></td>
+     		<td>拜访时间(起)：</td>
+     		<td><input name="visitTime_start" class="easyui-datetimebox"/></td>
+     		<td>拜访时间(止)：</td>
+     		<td><input name="visitTime_end" class="easyui-datetimebox"/></td>
+     	</tr>
+     </table>
+
+	<button type="button" id="btnSearch" onclick="query()">查询</button>
+</form>
+</div>
+<table id="grid"></table>
+<!-- 新增窗口 -->
+<div id="visitWindow" class="easyui-window" title="客户信息" 
+	style="width: 550px;height: 300px" data-options="closed:true">
+	<form id="visitForm" method="post">
+	     <input name="visitId" type="hidden"> 
+		  <table cellpadding="5">
+		  	<tr>
+		  		<td>客户:</td>
+		  		<td>
+		  			  		
+		  		<select id="cstCustomer_custId" name="cstCustomer.custId" style="width:150px;"></select>
+		  		
+		  		</td>
+		  		<td>业务员:</td>
+		  		<td>
+		  		    <select id="sysUser_userId" name="sysUser.userId" style="width:150px;"></select>
+		  		</td>
+		  	</tr>
+		  	<tr>
+		  		<td>被拜访人:</td>
+		  		<td><input name="visitInterviewee" style="width:150px;"/></td>
+		  		<td>拜访时间:</td>
+		  		<td><input name="visitTime" class="easyui-datetimebox" style="width:150px;"/></td>
+		  	</tr>
+		  	<tr>
+		  		<td>拜访地址:</td>
+		  		<td colspan="3"><input name="visitAddr" style="width:400px;"/></td>
+		  	</tr>
+		  	<tr>
+		  		<td>内容:</td>
+		  		<td colspan="3"><input name="visitDetail" style="width:400px;"/></td>
+		  	</tr>
+		  		<tr>
+		  		<td>下次拜访时间:</td>
+		  		<td colspan="3"><input name="visitNexttime" class="easyui-datetimebox" style="width:150px;"/></td>
+		  	</tr>
+		  	<tr>
+		  		<td colspan="4"><button id="customerBtn" type="button" onclick="save()">保存</button></td>
+		  	</tr>
+		  </table>
+	</form>
+</div>
+</body>
+</html>
