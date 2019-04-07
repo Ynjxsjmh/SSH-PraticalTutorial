@@ -62,4 +62,6 @@ In =SpringHibernate02= , transaction in Hibernate is handed over to Spring's dec
 
 =SSHCRM01=
 
+=SSHCRM02= implements the function of login, adding, editing, deleting and show user by page.
+
 Note that all the =SpringDemo*= are Java projects, you also need to import the all the jars in =lib= folder to the project by following =Right click on your project name -> Build Path -> Configure Build Path -> Tab *Libraries* -> Add JARs -> Choose all the jars in your project's lib folder= 
