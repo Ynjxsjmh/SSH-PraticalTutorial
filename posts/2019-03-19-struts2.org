@@ -1,0 +1,1256 @@
+#+OPTIONS: ':nil *:t -:t ::t <:t H:5 \n:nil ^:{} arch:headline
+#+OPTIONS: author:t broken-links:nil c:nil creator:nil
+#+OPTIONS: d:(not "LOGBOOK") date:t e:t email:nil f:t inline:t num:t
+#+OPTIONS: p:nil pri:nil prop:nil stat:t tags:t tasks:t tex:t
+#+OPTIONS: timestamp:t title:t toc:t todo:t |:t
+#+TITLE: 八、Struts2 客户管理之知识点
+#+DATE: <2019-03-19 Tue>
+#+AUTHOR: Ynjxsjmh
+#+EMAIL: ynjxsjmh@gmail.com
+#+FILETAGS: ::
+
+* 学习内容
+1. 数据封装 
+2. 常量
+3. 拦截器
+4. Ognl表达式
+5. 值栈
+
+* 数据封装
+该小节源码见 =Struts2Demo01=  =Struts2Demo02=  =Struts2Demo03=
+** jsp表单数据填充到action中的属性
+*** login.jsp
+#+BEGIN_SRC html
+ <%@ page language="java" import="java.util.*" pageEncoding="UTF-8"%>
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+  <head>
+    <title>login</title>
+    <meta http-equiv="pragma" content="no-cache">
+    <meta http-equiv="cache-control" content="no-cache">
+    <meta http-equiv="expires" content="0">    
+    <meta http-equiv="keywords" content="keyword1,keyword2,keyword3">
+    <meta http-equiv="description" content="This is my page">
+  </head>
+  <body>
+    <form action="${pageContext.request.contextPath }/login" name="frmLogin"  method="post">
+      用户名： <input type="text" name="userName"> <br/>
+      密码： <input type="text" name="pwd"> <br/>
+      <input type="submit" value="登陆"> <br/>
+    </form>
+  </body>
+</html>
+#+END_SRC
+
+*** web.xml
+#+BEGIN_SRC nxml
+ <?xml version="1.0" encoding="UTF-8"?>
+<web-app version="2.5" xmlns="http://java.sun.com/xml/ns/javaee"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://java.sun.com/xml/ns/javaee 
+    http://java.sun.com/xml/ns/javaee/web-app_2_5.xsd">
+    <!-- 引入struts核心过滤器 -->
+    <filter>
+        <filter-name>struts2</filter-name>  <filter-class>org.apache.struts2.dispatcher.ng.filter.StrutsPrepareAndExecuteFilter</filter-class>
+    </filter>
+    <filter-mapping>
+        <filter-name>struts2</filter-name>
+        <url-pattern>/*</url-pattern>
+    </filter-mapping>
+<welcome-file-list>
+        <welcome-file>index.jsp</welcome-file>
+    </welcome-file-list>
+</web-app>
+#+END_SRC
+
+*** struts.xml
+#+BEGIN_SRC nxml
+ <?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE struts PUBLIC
+          "-//Apache Software Foundation//DTD Struts Configuration 2.0//EN"
+          "http://struts.apache.org/dtds/struts-2.0.dtd">
+<struts>
+    <!-- struts在运行时候会加载这个总配置文件： src/struts.xml -->    
+    <!-- 总配置文件中引入其他所有的配置文件 -->
+    <include file="cn/atcast/execute/config.xml"></include>
+</struts>
+#+END_SRC
+
+*** config.xml
+#+BEGIN_SRC nxml
+ <?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE struts PUBLIC
+          "-//Apache Software Foundation//DTD Struts Configuration 2.0//EN"
+          "http://struts.apache.org/dtds/struts-2.0.dtd">
+<struts>
+    <package name="user" extends="struts-default" namespace="/">
+        <action name="login" class="cn.atcast.execute.UserAction" method="login">
+            <result name="login">/success.jsp</result>
+        </action>
+    </package> 
+</struts>
+#+END_SRC
+
+*** UserAction.java
+#+BEGIN_SRC java
+package cn.atcast.execute;
+import java.util.Map;
+import com.opensymphony.xwork2.ActionContext;
+import com.opensymphony.xwork2.ActionSupport;
+
+public class UserAction extends ActionSupport {
+    // 属性名与login.jsp中表单中传递的参数名一致。
+    // struts2自动赋值参数，通过params拦截器
+    private String userName;
+    private String pwd;
+
+    public void setUserName(String userName) {
+        this.userName = userName;
+    }
+
+    public void setPwd(String pwd) {
+        this.pwd = pwd;
+    }
+
+    public String login() {
+        // 获取用户名密码
+        System.out.println(userName);
+        System.out.println(pwd);
+
+        // 把数据保存到域
+        ActionContext ac = ActionContext.getContext();
+        // 得到代表request的map
+        Map<String, Object> request = ac.getContextMap();
+        // 得到代表session的map
+        Map<String, Object> session = ac.getSession();
+        // 得到代表servletContext的map
+        Map<String, Object> application = ac.getApplication();
+        // 保存
+        request.put("request_data", "request_data");
+        session.put("session_data", "session_data");
+        application.put("application_data", "application_data");
+        return "login";
+    }
+}
+#+END_SRC
+
+*** success.jsp
+#+BEGIN_SRC html
+<%@ page language="java" import="java.util.*" pageEncoding="UTF-8"%>
+<%
+String path = request.getContextPath();
+String basePath = request.getScheme()+"://"+request.getServerName()+":"+request.getServerPort()+path+"/";
+%>
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+  <head>
+    <base href="<%=basePath%>">
+    
+    <title>My JSP 'index.jsp' starting page</title>
+    <meta http-equiv="pragma" content="no-cache">
+    <meta http-equiv="cache-control" content="no-cache">
+    <meta http-equiv="expires" content="0">    
+    <meta http-equiv="keywords" content="keyword1,keyword2,keyword3">
+    <meta http-equiv="description" content="This is my page">
+    <!--
+    <link rel="stylesheet" type="text/css" href="styles.css">
+    -->
+  </head>
+  <body>
+     ${requestScope.request_data }
+     ${sessionScope.session_data }
+     ${applicationScope.application_data }
+  </body>
+</html>
+#+END_SRC
+** jsp表单数据填充到action的对象中的属性
+*** login.jsp
+#+BEGIN_SRC html
+<%@ page language="java" import="java.util.*" pageEncoding="UTF-8"%>
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+  <head>
+    <title>login</title>
+    <meta http-equiv="pragma" content="no-cache">
+    <meta http-equiv="cache-control" content="no-cache">
+    <meta http-equiv="expires" content="0">    
+    <meta http-equiv="keywords" content="keyword1,keyword2,keyword3">
+    <meta http-equiv="description" content="This is my page">
+    <!--
+    <link rel="stylesheet" type="text/css" href="styles.css">
+    -->
+  </head>
+  
+  <body>
+    <form action="${pageContext.request.contextPath }/login" name="frmLogin"  method="post">
+       用户名： <input type="text" name="user.userName"> <br/>
+     密码： <input type="text" name="user.pwd"> <br/>
+       <input type="submit" value="登陆"> <br/>
+    </form>
+  </body>
+</html>
+#+END_SRC
+
+*** web.xml
+#+BEGIN_SRC nxml
+ <?xml version="1.0" encoding="UTF-8"?>
+<web-app version="2.5" xmlns="http://java.sun.com/xml/ns/javaee"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://java.sun.com/xml/ns/javaee 
+    http://java.sun.com/xml/ns/javaee/web-app_2_5.xsd">
+
+    <!-- 引入struts核心过滤器 -->
+    <filter>
+        <filter-name>struts2</filter-name>  <filter-class>org.apache.struts2.dispatcher.ng.filter.StrutsPrepareAndExecuteFilter</filter-class>
+    </filter>
+    <filter-mapping>
+        <filter-name>struts2</filter-name>
+        <url-pattern>/*</url-pattern>
+    </filter-mapping>
+
+    <welcome-file-list>
+        <welcome-file>index.jsp</welcome-file>
+    </welcome-file-list>
+</web-app>
+#+END_SRC
+
+*** struts.xml
+#+BEGIN_SRC nxml
+ <?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE struts PUBLIC
+          "-//Apache Software Foundation//DTD Struts Configuration 2.0//EN"
+          "http://struts.apache.org/dtds/struts-2.0.dtd">
+<struts>
+    <!-- struts在运行时候会加载这个总配置文件： src/struts.xml -->    
+    <!-- 总配置文件中引入其他所有的配置文件 -->
+    <include file="cn/atcast/execute/config.xml"></include>
+</struts>
+#+END_SRC
+
+*** config.xml
+#+BEGIN_SRC nxml
+ <?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE struts PUBLIC
+          "-//Apache Software Foundation//DTD Struts Configuration 2.0//EN"
+          "http://struts.apache.org/dtds/struts-2.0.dtd">
+<struts>
+    <package name="user" extends="struts-default" namespace="/">
+        <action name="login" class="cn.atcast.execute.UserAction" method="login">
+            <result name="login">/success.jsp</result>
+        </action>
+    </package> 
+</struts>
+#+END_SRC
+
+*** User.java
+#+BEGIN_SRC java
+package cn.atcast.execute;
+public class User {
+    private String userName;
+    private String pwd;
+    public String getUserName() {
+        return userName;
+    }
+    public void setUserName(String userName) {
+        this.userName = userName;
+    }
+    public String getPwd() {
+        return pwd;
+    }
+    public void setPwd(String pwd) {
+        this.pwd = pwd;
+    }
+}
+#+END_SRC
+
+*** UserAction.java
+#+BEGIN_SRC java
+ package cn.atcast.execute;
+import java.util.Map;
+import com.opensymphony.xwork2.ActionContext;
+import com.opensymphony.xwork2.ActionSupport;
+
+public class UserAction extends ActionSupport{
+    //如果使用的是对象，loin.jsp会自动将userName和pwd封装到user对象中。 params拦截器完成此功能。
+    private User user;
+    public void setUser(User user) {
+        this.user = user;
+    }
+    public User getUser() {
+        return user;
+    }
+    
+    public String login() {
+        // 获取用户名密码
+        System.out.println(user.getUserName());
+        System.out.println(user.getPwd());
+        return "login";
+    }
+}
+#+END_SRC
+
+*** success.jsp
+#+BEGIN_SRC html
+<body>
+   success<br>
+</body>
+#+END_SRC
+
+** 模型驱动(推荐)
+Struts运行时候，会执行默认的拦截器栈，其中有一个拦截器，模型驱动拦截器：使用模型驱动是为了简化表单中每个表单项的name属性值， 
+
+#+BEGIN_SRC nxml
+<interceptor name="modelDriven" class="com.opensymphony.xwork2.interceptor.ModelDrivenInterceptor"/>
+#+END_SRC
+
+**实体类的属性名一定要和表单中name一致**
+
+步骤及原理
+1. 实现ModelDriven接口
+2. 实现接口方法： 接口方法返回的就是要封装的对象
+3. 对象一定要实例化。
+4. jsp页面用户名:<s:textfield name="username"></s:textfield> 
+
+值栈是对应每一个请求对象的轻量级的数据存储中心，在这里统一管理着数据，供Action、Result、Interceptor等Struts2的其他部分使用，这样数据被集中管理起来而不凌乱。
+
+简单的说，值栈能够线程安全的为每个请求提供公共的数据存取服务。
+    
+当有请求的时候，Struts2会为每个请求创建一个新的值栈，也就是说，栈和请求是一一对应的，不同的请求，值栈也不一样，而值栈封装了一次请求所有需要操作的相关的数据。
+
+正是因为值栈和请求的对应关系，因此值栈能保证线程安全的为每个请求提供公共的数据存取服务。
+获取客户名称就可以直接从值栈中获取。${ model. userName }
+
+*** add.jsp
+#+BEGIN_SRC html
+<%@ page language="java" import="java.util.*" pageEncoding="UTF-8"%>
+<%@taglib uri="/struts-tags"  prefix="s"%>
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+  <head>
+    <title>My JSP 'index.jsp' starting page</title>
+    <meta http-equiv="pragma" content="no-cache">
+    <meta http-equiv="cache-control" content="no-cache">
+    <meta http-equiv="expires" content="0">    
+  </head>
+  
+  <body>
+     <s:form action="/user_add" method="post" theme="simple">
+        用户名:<s:textfield name="userName"></s:textfield>  <br/>
+        密码：<s:textfield name="pwd"></s:textfield>        <br/>
+        <s:submit value="保存用户"></s:submit>
+     </s:form>
+  </body>
+</html>
+#+END_SRC
+
+*** web.xml
+#+BEGIN_SRC nxml
+ <?xml version="1.0" encoding="UTF-8"?>
+<web-app version="2.5" xmlns="http://java.sun.com/xml/ns/javaee"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://java.sun.com/xml/ns/javaee 
+    http://java.sun.com/xml/ns/javaee/web-app_2_5.xsd">
+    <!-- 引入struts功能 -->
+    <filter>
+        <filter-name>struts2</filter-name>  <filter-class>org.apache.struts2.dispatcher.ng.filter.StrutsPrepareAndExecuteFilter</filter-class>
+    </filter>
+    <filter-mapping>
+        <filter-name>struts2</filter-name>
+        <url-pattern>/*</url-pattern>
+    </filter-mapping>
+    
+    <welcome-file-list>
+        <welcome-file>index.jsp</welcome-file>
+    </welcome-file-list>
+</web-app>
+#+END_SRC
+
+*** struts.xml
+#+BEGIN_SRC nxml
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE struts PUBLIC
+    "-//Apache Software Foundation//DTD Struts Configuration 2.3//EN"
+    "http://struts.apache.org/dtds/struts-2.3.dtd">
+<struts>
+    <include file="cn/atcast/form/form.xml"></include>
+</struts>
+#+END_SRC
+
+*** form.xml
+#+BEGIN_SRC nxml
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE struts PUBLIC
+    "-//Apache Software Foundation//DTD Struts Configuration 2.3//EN"
+    "http://struts.apache.org/dtds/struts-2.3.dtd">
+<struts>
+    <package name="form" extends="struts-default">
+        <action name="user_*" class="cn.atcast.form.UserAction" method="{1}">
+            <result name="success">/success.jsp</result>
+        </action>
+    </package>
+</struts>
+#+END_SRC
+
+*** User.java
+#+BEGIN_SRC java
+package cn.atcast.form;
+import java.util.Date;
+public class User {
+    private String userName;
+    private String pwd;
+    private String email;
+    private Date birth;
+    public String getUserName() {
+        return userName;
+    }
+    public void setUserName(String userName) {
+        this.userName = userName;
+    }
+    public String getPwd() {
+        return pwd;
+    }
+    public void setPwd(String pwd) {
+        this.pwd = pwd;
+    }
+    public String getEmail() {
+        return email;
+    }
+    public void setEmail(String email) {
+        this.email = email;
+    }
+    public Date getBirth() {
+        return birth;
+    }
+    public void setBirth(Date birth) {
+        this.birth = birth;
+    }
+    @Override
+    public String toString() {
+        return "User [birth=" + birth + ", email=" + email + ", pwd=" + pwd
+                + ", userName=" + userName + "]";
+    }
+}
+#+END_SRC
+
+*** UserAction.java
+#+BEGIN_SRC java
+package cn.atcast.form;
+import java.util.Map;
+import com.opensymphony.xwork2.ActionContext;
+import com.opensymphony.xwork2.ActionSupport;
+import com.opensymphony.xwork2.ModelDriven;
+import com.opensymphony.xwork2.util.ValueStack;
+/**1. 数据回显
+ * 2. 模型驱动
+ *
+ */
+public class UserAction extends ActionSupport implements ModelDriven<User> {
+    // 封装请求数据
+    private User user = new User(); //第一次创建的user对象
+    // 实现模型驱动接口方法
+    @Override
+    public User getModel() {
+        return user;
+    }
+    
+    public String add() {
+        // 测试： 使用了模型驱动，是否数据正常
+        System.out.println(user);
+        return "success";
+    }
+}
+#+END_SRC
+
+*** success.jsp
+#+BEGIN_SRC html
+<%@ page language="java" import="java.util.*" pageEncoding="UTF-8"%>
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+  <head>
+    <title>My JSP 'index.jsp' starting page</title>
+    <meta http-equiv="pragma" content="no-cache">
+    <meta http-equiv="cache-control" content="no-cache">
+    <meta http-equiv="expires" content="0">   
+  </head>
+  
+  <body>
+    <%@taglib uri="/struts-tags" prefix="s" %>
+    <s:form action="#" theme="simple">
+        <!-- 从值栈中提取数据 -->
+        用户名： <s:textfield name="model.userName"></s:textfield>     <br/>
+        密码： <s:textfield name="pwd"></s:textfield>     <br/>
+    </s:form>
+    <s:debug></s:debug>
+  </body>
+</html>
+#+END_SRC
+* 常量
+    指定默认编码集,作用于HttpServletRequest的setCharacterEncoding方法 和freemarker 、velocity的输出  \\
+    <constant name="struts.i18n.encoding" value="UTF-8"/>
+
+    自定义后缀修改常量  \\
+    <constant name="struts.action.extension" value="do"/>
+
+    设置浏览器是否缓存静态内容,默认值为true(生产环境下使用),开发阶段最好关闭  \\
+    <constant name="struts.serve.static.browserCache" value="false"/>
+
+    当struts的配置文件修改后,系统是否自动重新加载该文件,默认值为false(生产环境下不使用),开发阶段最好打开 \\
+    <constant name="struts.configuration.xml.reload" value="true"/>
+
+    开发模式下使用,这样可以打印出更详细的错误信息 \\
+    <constant name="struts.devMode" value="true" />
+
+    默认的视图主题 \\
+    <constant name="struts.ui.theme" value="simple" />
+
+    与spring集成时，指定由spring负责action对象的创建 \\
+    <constant name="struts.objectFactory" value="spring" />
+
+    该属性设置Struts 2是否支持动态方法调用，该属性的默认值是true。如果需要关闭动态方法调用，则可设置该属性为 false \\
+    <constant name="struts.enable.DynamicMethodInvocation" value="false"/>
+
+    上传文件的大小限制  \\
+    <constant name="struts.multipart.maxSize" value=“10701096"/>
+* 拦截器
+本小节源码见 =Struts2DemoInterceptor= 
+** 拦截器概念
+在Struts2中，每一个功能都用一个拦截器实现。用户想用struts的哪个功能的时候，可以自由组装使用。
+
+Struts2中，为了方便用户对拦截器的引用，提供了拦截器栈的定义，里面可以包含多个拦截器。 **拦截器栈** (拦截器1,拦截器2，…)
+
+Struts2中，如果用户没有指定执行哪些拦截器，struts2有一个默认执行的栈，defaultStack;
+
+**一旦如果用户有指定执行哪些拦截器，默认的拦截器栈就不会被执行**
+
+** 拦截器执行流程
+UML (时序图)
+
+https://raw.githubusercontent.com/Ynjxsjmh/ynjxsjmh.github.io/master/img/2019/2019-03-19-02-01.png
+
+启动：
+-    创建所有拦截器、执行init()        
+
+访问:                                 
+-     先创建Action，                    \\
+-     再执行拦截器，                    \\
+-     最后：拦截器放行，执行execute();  \\
+
+*** web.xml
+#+BEGIN_SRC nxml
+ <?xml version="1.0" encoding="UTF-8"?>
+<web-app version="2.5" xmlns="http://java.sun.com/xml/ns/javaee"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://java.sun.com/xml/ns/javaee 
+    http://java.sun.com/xml/ns/javaee/web-app_2_5.xsd">
+    <!-- Struts2的功能的初始化是通过过滤器引入 -->
+    <filter>
+        <filter-name>struts2</filter-name>
+    <filter-class>org.apache.struts2.dispatcher.ng.filter.StrutsPrepareAndExecuteFilter</filter-class>
+    </filter>
+    <filter-mapping>
+        <filter-name>struts2</filter-name>
+        <url-pattern>/*</url-pattern>
+    </filter-mapping>
+    
+    <welcome-file-list>
+        <welcome-file>index.jsp</welcome-file>
+    </welcome-file-list>
+</web-app>
+#+END_SRC
+
+*** struts.xml
+#+BEGIN_SRC nxml
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE struts PUBLIC
+    "-//Apache Software Foundation//DTD Struts Configuration 2.3//EN"
+    "http://struts.apache.org/dtds/struts-2.3.dtd">
+<struts>
+    <!-- 总配置文件： -->
+    <include file="cn/atcast/interceptor/hello.xml"></include>
+</struts>
+#+END_SRC
+
+*** hello.xml
+#+BEGIN_SRC nxml
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE struts PUBLIC
+    "-//Apache Software Foundation//DTD Struts Configuration 2.3//EN"
+    "http://struts.apache.org/dtds/struts-2.3.dtd">
+<struts>
+    <package name="hello" extends="struts-default">
+        <!-- 【拦截器配置】 -->
+        <interceptors>
+            <!-- 配置用户自定义的拦截器 -->
+            <interceptor name="helloInterceptor" class="cn.atcast.interceptor.HelloInterceptor"></interceptor>
+            <!-- 自定义一个栈： 要引用默认栈、自定义的拦截器 -->
+            <interceptor-stack name="helloStack">
+                <!-- 引用默认栈 (一定要放到第一行)-->
+                <interceptor-ref name="defaultStack"></interceptor-ref>
+                <!-- 引用自定义拦截器 -->
+                <interceptor-ref name="helloInterceptor"></interceptor-ref>
+            </interceptor-stack>
+        </interceptors>
+        <!-- 【执行拦截器】 -->
+        <default-interceptor-ref name="helloStack"></default-interceptor-ref>
+        <!-- Action配置 -->
+        <action name="hello" class="cn.atcast.interceptor.HelloAction">
+            <result name="success">/success.jsp</result>
+        </action>
+    </package>
+</struts>
+#+END_SRC
+
+*** HelloInterceptor.java
+#+BEGIN_SRC java
+package cn.atcast.interceptor;
+import com.opensymphony.xwork2.ActionInvocation;
+import com.opensymphony.xwork2.interceptor.Interceptor;
+/**
+ * 自定义拦截器
+ */
+public class HelloInterceptor implements Interceptor{
+    // 启动时候执行
+    public HelloInterceptor(){
+        System.out.println("1.创建了拦截器对象");
+    }
+    // 启动时候执行
+    @Override
+    public void init() {
+        System.out.println("2.执行了拦截器的初始化方法");
+    }
+// 拦截器业务处理方法 （在访问action时候执行？ 在execute之前执行？）
+    @Override
+    public String intercept(ActionInvocation invocation) throws Exception {
+        System.out.println("4. 执行Action之前");
+        // 调用下一个拦截器或执行Action  (相当于chain.doFilter(..)
+        // 获取的是： execute方法的返回值
+        String resultFlag = invocation.invoke();
+        System.out.println("6. 拦截器，业务处理-结束" + resultFlag);
+        return resultFlag;
+    }
+    @Override
+    public void destroy() {
+        System.out.println("7. 销毁....");
+    }
+}
+#+END_SRC
+
+*** HelloAction.java
+#+BEGIN_SRC java
+package cn.atcast.interceptor;
+import com.opensymphony.xwork2.ActionSupport;
+/**
+ * Action开发测试
+ */
+public class HelloAction extends ActionSupport{
+    public HelloAction() {
+        System.out.println("3. Action实例创建了");
+    }
+    @Override
+    public String execute() throws Exception {
+        System.out.println("5. 执行了请求处理的方法: execute");
+        return super.execute();
+    }
+}
+#+END_SRC
+
+*** success.jsp
+#+BEGIN_SRC html
+<body>
+   success
+</body>
+#+END_SRC
+
+访问 http://localhost:8080/Structs2DemoInterceptor/hello.action
+
+** 常用拦截器
+| conversionError | 类型转换错误拦截器                                                   |
+| exception       | 异常拦截器                                                           |
+| fileUpload      | 文件上传拦截器                                                       |
+| i18n            | 国际化拦截器                                                         |
+| logger          | 日志拦截器                                                           |
+| params          | 解析请求参数拦截器                                                   |
+| validation      | 校验拦截器                                                           |
+| timer           | 这个拦截器负责输出Action的执行时间，以分析该Action的性能瓶颈         |
+| token           | 避免重复提交的校验拦截器                                             |
+| modelDriven     | Action执行该拦截器时候可以将getModel方法得到的result值放入值栈中     |
+| roles           | 进行权限配置的拦截器，如果登录用户拥有相应权限才去执行某一特定Action |
+
+* Ognl表达式语言
+本小节源码见 =Struts2OGNL=
+** OGNL表达式 
+OGNL是Object Graphic Navigation Language（对象图导航语言）的缩写，它是一个开源项目。Struts2框架使用OGNL作为默认的表达式语言。
+
+它是一个功能强大的表达式语言，用来获取和设置Java对象的属性，它旨在提供一个更高的更抽象的层次来对Java对象图进行导航。
+
+Ognl的类中包含的很方便的方法实现OGNL表达式的赋值。实现这个功能需要两步，解析一个表达式使之称为一种内部的形式然后再用这种内部的形式对属性赋值或取值；
+
+
+Struts框架默认就支持Ognl表达式语言。(struts必须引用包ognl.jar)
+作用：页面取值用。
+
+El表达式语言，用于页面取值，jsp页面取值的标准。(默认直接可以使用) 
+Ognl表达式语言， struts标签默认支持的表达式语言。必须配置struts标签用，不能离开struts标签直接用。
+
+** OGNL优势
+1. 存取对象的任意属性，简单说就是对javabean进行操作(重要)
+2. 调用对象方法。
+3. 调用类的静态方法
+4. 索引数组元素
+5. 操作集合(重要)
+
+操作之前必须知道如何使用OGNL表达式，并且了解OGNL表达式的                    取值范围只能在其context和root中，格式为
+#+BEGIN_SRC java
+Ognl.getValue(expression,context,root);
+//expression:为我们编写的ognl表达式，从后两个参数中获取值，
+//context:ognl的上下文，类型为map，
+//root：ognl的根，可以为javabean、list、map、.... 等等很多值 Struts2框架中使用OGNL表达式
+#+END_SRC
+
+*** Address.java
+#+BEGIN_SRC java
+package com.atcast.demo1;
+public class Address {
+    private String city;
+    private String street;
+    public String getCity() {
+        return city;
+    }
+    public void setCity(String city) {
+        this.city = city;
+    }
+    public String getStreet() {
+        return street;
+    }
+    public void setStreet(String street) {
+        this.street = street;
+    }
+}
+#+END_SRC
+
+*** User.java
+#+BEGIN_SRC java
+package com.atcast.demo1;
+public class User {
+    private String name;
+    private String password;
+    private int age;
+    private Address address;
+    public String getName() {
+        return name;
+    }
+    public void setName(String name) {
+        this.name = name;
+    }
+    public String getPassword() {
+        return password;
+    }
+    public void setPassword(String password) {
+        this.password = password;
+    }
+    public int getAge() {
+        return age;
+    }
+    public void setAge(int age) {
+        this.age = age;
+    }
+    public Address getAddress() {
+        return address;
+    }
+    public void setAddress(Address address) {
+        this.address = address;
+    }
+}
+#+END_SRC
+
+*** OgnlDemo.java
+#+BEGIN_SRC java
+package com.atcast.demo1;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+import ognl.Ognl;
+import ognl.OgnlException;
+
+import org.junit.Test;
+
+public class OgnlDemo {
+    
+    //1.对Javabean进行操作
+    @Test
+    /*
+ 将user对象作为ognl的根，编写ognl表达式来获取user对象中的各种属性。
+        直接编写属性名，即获取user对象中的某个属性值。
+     */
+    public void run1() throws OgnlException{
+        User user=new User();
+        user.setName("tom");
+        String name=(String)Ognl.getValue("name",new HashMap(),user);
+        System.out.println(name);
+    }
+    
+    @Test
+    /*
+     * 获取javabean中的对象的属性值
+     */
+    public void run2() throws OgnlException{
+        User user=new User();
+        Address address=new Address();
+        address.setCity("北京");
+        user.setAddress(address);  //在页面上通过ognl表达式取值，context或root
+        String city=(String)Ognl.getValue("address.city", new HashMap(),user);
+        System.out.println(city);
+    }
+    
+    @Test
+    /*
+     * 对javabean中的属性进行赋值操作
+     * 三种方式：
+     * 1.属性=value
+     * Ognl.getValue("name='tom'",new HashMap(),user);
+     * 2.setName(value)
+     * Ognl.getValue("setName('tom')",new HashMap(),user);
+     * 3.Ongl.getValue("name",new HashMap(),user,'tom');
+     */
+    public void run3() throws OgnlException{
+        User user=new User();
+        Ognl.getValue("name='tom'", new HashMap(),user);
+        System.out.println(user.getName());
+    }
+    
+    //2.调用对象方法
+    @Test
+    /*
+     * setName("xxx");对root中的方法进行调用，直接写方法名加参数
+     * getName() 可以通过调用getName()获取user的属性值。
+     */
+    public void run4() throws OgnlException{
+        User user=new User();
+        Ognl.getValue("setName('tom')", new HashMap(),user);
+        String name=(String)Ognl.getValue("getName()",new HashMap(),user); //获取name属性值
+        System.out.println(name);
+    }
+    
+    //3.调用类的静态方法或属性
+    /*
+     * 获取静态的方法和静态变量，不受方法或属性是否在root或context上下文中的限制
+     * 访问静态方法格式： @包名+类名@静态方法名
+     * @java.util.UUID@randomUUID()
+     * 访问静态变量格式:@包名+类名@静态变量名
+     * @java.lang.Math@PI
+     */
+    @Test
+    public void run5() throws OgnlException{
+        User user=new User();
+        UUID randomUUID=(UUID)Ognl.getValue("@java.util.UUID@randomUUID()",new HashMap(),user);
+        System.out.println(randomUUID.toString());
+        double pi=(Double)Ognl.getValue("@java.lang.Math@PI", new HashMap(),user);
+        System.out.println(pi);
+    }
+    //4.索引数组元素
+    @Test
+    public void run6() throws OgnlException{
+        int[] array={1,2,3,4,5};
+        //获取数组中第一个元素
+        int first=(Integer)Ognl.getValue("[0]", new HashMap(),array);
+        System.out.println(first);
+    }
+    //5.操作集合
+    //操作list集合，list集合本质就是一个数组，所以从list中读取数据跟对数组的操作一样
+    @Test
+    public void run7() throws OgnlException{
+        List<User> uList=new ArrayList<User>();
+        User user1=new User();
+        user1.setName("tom");
+        uList.add(user1);
+        User user2=new User();
+        user2.setName("jerry");
+        uList.add(user2);
+        //获取集合中的第一个对象的name属性值 root [0].name  username
+        String name1=(String)Ognl.getValue("[0].name", new HashMap(),uList);
+        System.out.println(name1);
+    }
+    //操作map集合
+    @Test
+    public void run8() throws OgnlException{
+         Map<String,String> map=new HashMap<String,String>();
+         map.put("name", "tom");
+         map.put("age", "18");
+         /*
+          * 1.取root下的map集合中的value值
+          * 格式：key  直接写上key，就能找到对应的value值。如果value值是一个对象，通过"."来获取对象中的属性。
+          * 2.取context上下文中的属性，因为上下文就是一个map,为区分是从root还是上下文中取，使用"#"区分。
+          * 格式:#key
+          */
+         String name=(String)Ognl.getValue("name", new HashMap(),map);
+         System.out.println(name);
+         
+     
+    }
+    //创建list集合
+    @Test
+    public void run9() throws OgnlException{
+        User user=new User();
+        List<String> list=(List<String>)Ognl.getValue("{'tom','jerry','mike'}", new HashMap(),user);
+        System.out.println(list.get(0));
+    }
+    //创建map集合
+    @Test
+    public void run10() throws OgnlException{
+        User user=new User();
+        Map map=(Map)Ognl.getValue("#{'name':'tom','age':'18'}", new HashMap(),user);
+        System.out.println(map.get("name"));
+    }
+}
+#+END_SRC
+* ValueStack值栈对象
+本小节源码见 =Struts2DemoLoginRegister=
+** 什么是值栈
+值栈就相当于Struts2框架的数据的中转站，向值栈存入一些数据。从值栈中获取到数据。
+
+ValueStack是 struts2 提供一个接口，实现类 OgnlValueStack ---- 值栈对象（OGNL是从值栈中获取数据的）
+
+Action是多例的，有一起请求，会创建Action实例，创建一个ActionContext对象，代表的是Action的上下文对象，还会创建一个ValueStack对象。
+
+每个Action实例都有一个ValueStack对象（一个请求对应一个ValueStack对象）
+
+在其中保存当前Action 对象和其他相关对象
+
+Struts 框架把 ValueStack 对象保存在名为 “struts.valueStack” 的请求属性中，request中（值栈对象是request一个属性）
+
+ValueStack vs = (ValueStack)request.getAttribute("struts.valueStack");
+
+** 值栈的内部结构
+值栈由两部分组成
+| root    | Struts把动作和相关对象压入 ObjectStack 中 -- List                  |
+| context | Struts把各种各样的映射关系(一些 Map 类型的对象) 压入 ContextMap 中 |
+
+Struts会默认把下面这些映射压入ContextMap（context）中
+**注意** ： request代表的是Map集合的key值，value的值其实也是一个Map集合。
+| parameters  | 该 Map 中包含当前请求的请求参数 ?name=xxx&password=123        |
+| request     | 该 Map 中包含当前 request 对象中的所有属性                    |
+| session     | 该 Map 中包含当前 session 对象中的所有属性                    |
+| application | 该 Map 中包含当前 application 对象中的所有属性                |
+| attr        | 该 Map 按如下顺序来检索某个属性 request, session, application |
+
+ValueStack中 存在root属性 (CompoundRoot) 、 context 属性 （OgnlContext ）
+> CompoundRoot 就是ArrayList
+> OgnlContext 就是 Map
+
+context 对应 Map 引入 root对象 
+> context中还存在 request、 session、application、 attr、 parameters 对象引用 
+> OGNL表达式访问值栈中的数据
+   * 访问root中数据时 不需要 #
+   * 访问 request、 session、application、 attr、 parameters 对象数据 必须写 # 
+> 操作值栈 默认指 操作 root 元素
+
+https://raw.githubusercontent.com/Ynjxsjmh/ynjxsjmh.github.io/master/img/2019/2019-03-19-02-02.png
+
+** 值栈的操作
+action中手动向valueStack中放数据。
+
+#+BEGIN_SRC java
+ActionContext.getContext().getValueStack().push(xxx);//push(user) 在页上取值username　
+//一般是javabean，这样放是放在root中，因为push操作是对栈进行操作，也就是对root进行操作
+ActionContext.getContext().getValueStack().set(key,value);　//set(“user”,user)->user.username　
+//任意值，以key-value的形式放入到了root中。
+#+END_SRC
+
+jsp获取push存放，在root下，直接使用属性获取即可set存放，通过属性也可以直接获得。这里要排除一个误区，就是不要觉得set方式是以键值对的方式存放，就觉得是放入了context中。其实并没有，还是在root中
+
+** context操作
+#+BEGIN_SRC java
+ActionContext.getContext().put(key,value);　//put(“user”,user)->#user.username　
+//存放在actionContext中，也就是OGNL的context中
+//key获取。直接使用key获取
+#+END_SRC
+
+在jsp中通过 =<s:debug />= 查看值栈的内容
+
+** 在JSP中获取值栈的数据
+*** 总结几个小问题
+- 访问root中数据不需要#
+- 访问context其它对象数据加 #
+- 如果向root中存入对象的话，优先使用push方法。
+- 如果向root中存入集合的话，优先要使用set方法。
+*** 在OgnlContext中获取数据
+- 在Action中向域对象中存入值
+- request:<s:property value="#request.username"/>
+- session:<s:property value="#session.username"/>
+- application:<s:property value="#application.username"/>
+- attr:<s:property value="#attr.username"/>
+- parameters:<s:property value="#parameters.cid"/>
+
+** 代码
+*** struts.xml
+#+BEGIN_SRC nxml
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE struts PUBLIC
+    "-//Apache Software Foundation//DTD Struts Configuration 2.3//EN"
+    "http://struts.apache.org/dtds/struts-2.3.dtd">
+<struts>
+    <package name="demo1" namespace="/" extends="struts-default">
+        <!-- 压栈和取值 -->
+        <action name="save" class="com.atcast.demo2.ValueStackAction" method="save">
+            <result name="success">/demo2/vs.jsp</result>
+        </action>
+    </package>
+</struts>
+#+END_SRC
+
+*** User.java
+#+BEGIN_SRC java
+package com.atcast.demo2;
+public class User {
+    private String username;
+    private String password;
+    
+    public User() {
+    }
+    public User(String username, String password) {
+        this.username = username;
+        this.password = password;
+    }
+    
+    public String getUsername() {
+        return username;
+    }
+    public void setUsername(String username) {
+        this.username = username;
+    }
+    public String getPassword() {
+        return password;
+    }
+    public void setPassword(String password) {
+        this.password = password;
+    }
+}
+#+END_SRC
+
+*** ValueStackAction.java
+#+BEGIN_SRC java
+package com.atcast.demo2;
+import java.util.ArrayList;
+import java.util.List;
+import javax.servlet.http.HttpServletRequest;
+import org.apache.struts2.ServletActionContext;
+import com.opensymphony.xwork2.ActionContext;
+import com.opensymphony.xwork2.ActionSupport;
+import com.opensymphony.xwork2.util.ValueStack;
+/**
+ * 演示值栈对象的目录结构
+ * @author Administrator
+ */
+public class ValueStackAction extends ActionSupport{
+    /*
+     * 序列化通常是用来传输对象的。传输就有发送方和接收方。为保证正确性，这两方必须使用同一个class来序列化和反序列化一个对象。
+     * 可是，如果两方使用同一个class的不同版本（名字相同，成员和方法不同）怎么办？
+     * 所以java要求每个Serializable的类都有一个serialVersionUID。
+     * 原则上，每次修改类的时候都应该增加或改变这个serialVersionUID。
+     * 这样，如果接收方用的是旧的版本，java就会报错:InvalidClassException。
+     */
+    private static final long serialVersionUID = 1079080388172927594L;
+    /*private User user = new User("小泽","456");
+    public User getUser() {
+        return user;
+    }
+    public void setUser(User user) {
+        this.user = user;
+    }*/
+    /**
+     * 演示从值栈中获取值
+     * @return
+     * @throws Exception
+     */
+    public String save() throws Exception {
+//servletActionContext是ActionContext子类
+        /*// 使用获取值栈对象
+        HttpServletRequest request = ServletActionContext.getRequest();
+        ValueStack vs = (ValueStack) request.getAttribute("struts.valueStack");
+        System.out.println(vs);*/
+        
+        // 获取到值栈对象，先获取到ActionContext对象
+        ValueStack vs = ActionContext.getContext().getValueStack();
+        System.out.println(vs);
+//      //向栈顶压字符，此时栈顶为"刘备"
+//      vs.push("刘备");
+//      //向栈顶压继续压入字符，此时栈顶为"张飞"，"刘备"在"张飞"的下面
+//      vs.push("张飞");
+//       // set(key,obj)也是向栈顶压入对象，只是以map集合的方式，将key和obj存入map集合中。
+//      vs.set("msg", "美美");
+//      vs.set("info", "小苍");;
+        
+        // 创建User对象
+//        User user = new User("小苍","123");
+//      // 压栈
+//       //vs.push(user);
+//       vs.set("user", user);
+        //root存数据有push和set方法，context存数据是put方法
+          User user1=new User("tom","123");
+          User user2=new User("jerry","222");
+         //vs.push(user);  //[0].top.username=username
+        // vs.set("msg","小美");
+         //user1存入root
+         vs.set("user1", user1); //user.username
+         //将user2对象存入context上下文
+        ActionContext.getContext().put("user2",user2);
+
+        List<User> ulist = new ArrayList<User>();
+        ulist.add(new User("熊大","123"));
+        ulist.add(new User("熊二","456"));
+        ulist.add(new User("熊三","789"));
+    
+        // 把ulist集合压栈
+         // vs.push(ulist);
+        
+        // set方法进行压栈
+        //vs.set("ulist", ulist);
+     
+        // 从context栈中获取值，底层已经封装到request session对象，操作就是map集合
+        HttpServletRequest request = ServletActionContext.getRequest();
+        request.setAttribute("msg", "美美");
+        request.getSession().setAttribute("msg", "小风");
+        
+        return SUCCESS;
+    }
+}
+#+END_SRC
+
+*** vs.jsp
+#+BEGIN_SRC html
+<%@ page language="java" contentType="text/html; charset=UTF-8"
+    pageEncoding="UTF-8"%>
+<%@ taglib prefix="s" uri="/struts-tags"%>
+<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Insert title here</title>
+</head>
+<body>
+<h3>从值栈中获取值</h3>
+<!--
+    // vs.push("刘备");
+    // 获取到栈顶的值
+    //查看页面的Debug，分为上下两部分。上面的是root中存放的对象，下面中context中存放的对象。
+    //在root中又分为左右两部门，左边存放root中每一个对象（最上面的对象下标为0），右边存放对象的属性。
+    <s:property value="[0].top"/>
+    <s:property value="[1].top"/>
+    <s:property value="[2].top"/>
+    <s:property value="[3].top"/>
+     -->
+<!--
+    // 栈顶是map集合，通过key获取值
+    //vs.set("msg", "小凤");
+    <s:property value="[0].top.msg"/>
+-->
+    <!--  
+    //vs.push(user);
+    // 栈顶放user对象
+    
+    <s:property value="[0].top.username"/>
+    <s:property value="[0].top.password"/>
+    <!--[0].top 关键字是可以省略的 
+    <s:property value="username"/>
+    -->
+<!--
+    vs.set("user", user);
+    <s:property value="[0].top.user.username"/>
+    <s:property value="[0].top.user.password"/>
+    -->
+    <!--// 省略关键字 
+    <s:property value="user.username"/>
+     -->
+<!--  
+    栈顶是list集合
+    vs.push(ulist);
+    <s:property value="[0].top[0].username"/>
+    <s:property value="[0].top[1].username"/>
+-->
+
+<!--
+    vs.set("ulist", ulist);
+    <s:property value="ulist[0].username"/>
+-->
+<!-- 迭代的标签 
+    属性
+        * value 要迭代的集合，需要从值栈中获取
+        * var   迭代过程中，遍历的对象
+        * var编写上，把迭代产生的对象默认压入到context栈中，从context栈取值，加#号
+        * var不编写，默认把迭代产生的对象压入到root栈中
+        
+    for(User user:ulist){}  
+    // 编写var的属性
+    <s:iterator value="ulist" var="u">
+        <s:property value="#u.username"/>
+        <s:property value="#u.password"/>
+    </s:iterator>
+    // 没有编写var关键字
+    <s:iterator value="ulist">
+        <s:property value="username"/>
+        <s:property value="password"/>
+    </s:iterator>
+-->
+<!-- 从context栈中获取值，加#号 
+HttpServletRequest request = ServletActionContext.getRequest();
+request.setAttribute("msg", "美美");
+request.getSession().setAttribute("msg", "小风");
+-->
+<s:property value="#request.msg"/>
+<s:property value="#session.msg"/>
+<s:property value="#parameters.id"/>
+<s:property value="#attr.msg"/>
+<!--
+    在JSP页面上可以使用EL和JSTL标签库来取值
+    使用装饰者模式，连接池 全站编码
+    getAttribute()增强了
+
+<c:forEach items="${ ulist }" var="user">
+    ${ user.username } -- ${ user.password }
+</c:forEach>
+-->
+<!-- 在JSP页面上，查看值栈的内部结构 -->
+<s:debug></s:debug>
+</body>
+</html>
+#+END_SRC
+
+http://localhost:8080/Struts2OGNL/save.action
+
+*** demo03.jsp
+#+BEGIN_SRC html
+<%@ page language="java" contentType="text/html; charset=UTF-8"
+    pageEncoding="UTF-8"%>
+    
+<%@ taglib prefix="s" uri="/struts-tags" %>    
+    
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Insert title here</title>
+</head>
+<body>
+
+<h3>编写表单</h3>
+
+<form action="" method="post">
+    性别：<input type="radio" name="sex" value="1"/>男<input type="radio" name="sex" value="2"/>女
+</form>
+
+<h3>使用UI标签方式</h3>
+<s:form action="" method="post">
+    <%-- 性别：<s:radio name="sex" list="{'男','女'}"/> --%>
+    性别：<s:radio name="sex" list="#{'1':'男','2':'女'}"/>
+</s:form>
+<s:property value="'aaaa'"/>
+</body>
+</html>
+#+END_SRC
+

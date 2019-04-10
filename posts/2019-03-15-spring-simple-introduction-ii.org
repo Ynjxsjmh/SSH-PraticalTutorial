@@ -1,0 +1,2240 @@
+#+OPTIONS: ':nil *:t -:t ::t <:t H:5 \n:nil ^:{} arch:headline
+#+OPTIONS: author:t broken-links:nil c:nil creator:nil
+#+OPTIONS: d:(not "LOGBOOK") date:t e:t email:nil f:t inline:t num:t
+#+OPTIONS: p:nil pri:nil prop:nil stat:t tags:t tasks:t tex:t
+#+OPTIONS: timestamp:t title:t toc:t todo:t |:t
+#+TITLE: 十三、Spring 客户管理之知识点
+#+DATE: <2019-03-15 Tue>
+#+AUTHOR: Ynjxsjmh
+#+EMAIL: ynjxsjmh@gmail.com
+#+FILETAGS: ::
+
+* 学习内容
+1. 代理模式 
+2. AOP编程
+3. Spring对jdbc的支持
+4. 事务控制
+5. Spring与Hibernate整合
+6. SSH整合
+
+* Spring框架核心
+代理和 AOP 的源码见 =SpringDemo02=
+** 代理模式
+*** 静态代理
+代理（Proxy）是一种设计模式， 提供了对目标对象另外的访问方式；即通过代理访问目标对象。 这样好处： 可以在目标对象实现的基础上，增强额外的功能操作。(扩展目标对象的功能)。
+举例：明星---经纪人<-------用户  
+      目标        （代理）
+
+https://raw.githubusercontent.com/Ynjxsjmh/ynjxsjmh.github.io/master/img/2019/2019-03-15-02-01.png
+
+代理模式的关键点： 代理对象与目标对象。
+
+**** IUserDao.java
+#+BEGIN_SRC java
+package cn.atcast.a_static;
+// 接口
+public interface IUserDao {
+    void save();
+}
+#+END_SRC
+
+**** UserDao.java
+#+BEGIN_SRC java
+package cn.atcast.a_static;
+/**
+ * 目标对象
+ *
+ */
+public class UserDao implements IUserDao{
+    @Override
+    public void save() {
+    System.out.println("-----已经保存数据！！！------");
+    }
+}
+#+END_SRC
+
+**** UserDaoProxy.java
+#+BEGIN_SRC java
+package cn.atcast.a_static;
+/**
+ * 代理对象(静态代理)
+ *     代理对象，要实现与目标对象一样的接口
+ *
+ */
+public class UserDaoProxy implements IUserDao{
+    // 接收保存目标对象
+    private IUserDao target;
+    public UserDaoProxy(IUserDao target) {
+        this.target = target;
+    }
+    
+    @Override
+    public void save() {
+        System.out.println("开始事务...");      
+        target.save();          // 执行目标对象的方法   
+        System.out.println("提交事务...");
+    }
+}
+#+END_SRC
+
+**** App.java
+#+BEGIN_SRC java
+package cn.atcast.a_static;
+public class App {
+    public static void main(String[] args) {
+        // 目标对象
+        IUserDao target = new UserDao();    
+        // 代理
+        IUserDao proxy = new UserDaoProxy(target);
+        proxy.save();  // 执行的是代理的方法
+    }
+}
+#+END_SRC
+
+**** 总结静态代理：
+1. 可以做到在不修改目标对象的功能前提下，对目标对象功能扩展。
+2. 缺点：
+    - 因为代理对象，需要与目标对象实现一样的接口。所以会有很多代理类，类太多。
+    - 一旦接口增加方法，目标对象与代理对象都要维护。
+
+解决：可以使用动态代理。
+
+*** 动态代理
+1. 代理对象不需要实现接口
+2. 代理对象的生成是利用JDKAPI， 动态的在内存中构建代理对象
+JDK中生成代理对象的API：
+|-- Proxy
+#+BEGIN_SRC java
+static Object newProxyInstance(
+    ClassLoader loader,       指定当前目标对象使用类加载器
+    Class<?>[] interfaces,     目标对象实现的接口的类型
+    InvocationHandler h       事件处理器
+)
+#+END_SRC
+
+**** IUserDao.java
+#+BEGIN_SRC java
+package cn.atcast.b_dynamic;
+// 接口
+public interface IUserDao {
+    void save();
+}
+#+END_SRC
+
+**** IUserDao1.java
+#+BEGIN_SRC java
+package cn.atcast.b_dynamic;
+// 接口
+public interface IUserDao1 {
+    void save();
+}
+#+END_SRC
+
+**** UserDao.java
+#+BEGIN_SRC java
+package cn.atcast.b_dynamic;
+/**
+ * 目标对象
+ *
+ */
+public class UserDao implements IUserDao{
+    @Override
+    public void save() {
+    System.out.println("-----已经保存数据！！！------");
+    }
+}
+#+END_SRC
+
+**** UserDao1.java
+#+BEGIN_SRC java
+package cn.atcast.b_dynamic;
+/**
+ * 目标对象
+ *
+ */
+public class UserDao1 implements IUserDao1{
+    @Override
+    public void save() {
+        System.out.println("-----已经保存数据111！！！------");
+    }
+}
+#+END_SRC
+
+**** ProxyFactory.java
+#+BEGIN_SRC java
+package cn.atcast.b_dynamic;
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
+/**
+ * 给所有的dao创建代理对象【动态代理】
+ * 
+ * 代理对象，不需要实现接口
+ *
+ */
+public class ProxyFactory {
+    // 维护一个目标对象
+    private Object target;
+    public ProxyFactory(Object target){
+        this.target = target;
+    }
+    
+    // 给目标对象，生成代理对象  
+    public Object getProxyInstance() {
+        //返回代理对象
+        return Proxy.newProxyInstance(
+                target.getClass().getClassLoader(), //指定当前目标对象使用类加载器 UserDao
+                target.getClass().getInterfaces(), //目标对象实现的接口的类型 IUserDao
+                new InvocationHandler() {
+                    @Override
+                    //第一个参数是目标对象，第二个参数是目标对象中要代理的方法，第三个参数是目标对象中代理方法的参数
+                    //proxy参数传递的即是代理类的实例；method是调用的方法，即需要执行的方法；args是方法的参数
+                    public Object invoke(Object proxy, Method method, Object[] args)
+                            throws Throwable {
+                        System.out.println("开启事务");
+                        // 执行目标对象方法
+                //第一个参数target是调用哪个目标类的对象。 
+                        //比如目标类为UserDao，但是可以有target，target1。。。。等等一系列的实例，但是要调用哪个实例的方法呢，就是要你传进去的target
+                        //调用目标对象的代理方法，方法参数target是实际的目标对象，args为执行目标对象代理方法所需的参数
+                        Object returnValue = method.invoke(target, args);
+                        System.out.println("提交事务");
+                        return returnValue;
+                    }
+                });
+    }
+}
+#+END_SRC
+
+**** App.java
+#+BEGIN_SRC java
+package cn.atcast.b_dynamic;
+public class App {
+    public static void main(String[] args) {
+        // 目标对象
+        //IUserDao1 target = new UserDao1();
+          IUserDao target = new UserDao();
+        // 【原始的类型 class cn.atcast.b_dynamic.UserDao】
+        System.out.println(target.getClass());
+        // 给目标对象，创建代理对象
+        //IUserDao1 proxy = (IUserDao1) new ProxyFactory(target).getProxyInstance();
+          IUserDao proxy = (IUserDao) new ProxyFactory(target).getProxyInstance();
+        // class $Proxy0   内存中动态生成的代理对象
+        System.out.println(proxy.getClass());
+        // 执行方法   【代理对象】
+        proxy.save();
+    }
+}
+#+END_SRC
+
+**** 动态代理总结
+代理对象不需要实现接口，但是目标对象一定要实现接口；否则不能用动态代理
+
+思考：
+有一个目标对象，想要功能扩展，但目标对象没有实现接口，怎样功能扩展？
+
+#+BEGIN_SRC java
+Class  UserDao{}
+// 子类的方式
+Class subclass  extends  UserDao{}
+#+END_SRC
+
+以子类的方式实现(cglib代理)
+
+*** Cglib代理
+Cglib代理，也叫做子类代理。在内存中构建一个子类对象从而实现对目标对象功能的扩展。
+- JDK的动态代理有一个限制，就是使用动态代理的对象必须实现一个或多个接口。如果想代理没有实现接口的类，就可以使用CGLIB实现。 
+
+- CGLIB是一个强大的高性能的代码生成包，它可以在运行期扩展Java类与实现Java接口。它广泛的被许多AOP的框架使用，例如Spring AOP和dynaop，为他们提供方法的interception（b）。
+
+Cglib子类代理：
+1. 需要引入cglib – jar文件， 但是spring的核心包中已经包括了cglib功能，所以直接  引入spring-core-3.2.5.jar即可。
+2. 引入功能包后，就可以在内存中动态构建子类
+3. 代理的类不能为final， 否则报错。
+4. 目标对象的方法如果为final/static, 那么就不会被拦截，即不会执行目标对象额外的业务方法。
+
+在Spring的AOP编程中：
+- 如果加入容器的目标对象有实现接口，用JDK代理；
+- 如果目标对象没有实现接口，用Cglib代理；
+
+**** UserDao.java
+#+BEGIN_SRC java
+package cn.atcast.c_cglib;
+/**
+ * 目标对象
+ *
+ */
+public class UserDao {
+
+    public void save() {
+    System.out.println("-----已经保存数据！！！------");
+    }
+}
+#+END_SRC
+
+**** ProxyFactory.java
+#+BEGIN_SRC java
+package cn.atcast.c_cglib;
+import java.lang.reflect.Method;
+import org.springframework.cglib.proxy.Enhancer;
+import org.springframework.cglib.proxy.MethodInterceptor;
+import org.springframework.cglib.proxy.MethodProxy;
+/**
+ * Cglib子类代理工厂
+ * (对UserDao 在内存中动态构建一个子类对象)
+ *
+ */
+public class ProxyFactory implements MethodInterceptor{
+    // 维护目标对象
+    private Object target;
+    public ProxyFactory(Object target){
+        this.target = target;
+    }
+    
+    // 给目标对象创建代理对象
+    public Object getProxyInstance(){
+        //1. 工具类
+        Enhancer en = new Enhancer();
+        //2. 设置父类（以子类方式在内存中动态创建代理对象，需要知道子类的父类，此处为target，即是UserDao的实例对象）
+        en.setSuperclass(target.getClass());
+        //3. 设置回调函数（执行target类里的方法时，会触发拦截器中的方法）
+        en.setCallback(this);
+        //4. 创建子类(代理对象)
+        return en.create();
+    }
+    
+    /*
+     * CGLib采用非常底层的字节码技术，可以为一个类创建一个子类，并在子类中采用方法拦截的技术拦截所有父类方法的调用，并顺势植入横切逻辑。
+     */
+    @Override
+    public Object intercept(Object obj, Method method, Object[] args,
+            MethodProxy proxy) throws Throwable {
+        System.out.println("开始事务.....");
+        // 执行目标对象的方法
+    Object returnValue = method.invoke(target, args);
+        System.out.println("提交事务.....");
+        return returnValue;
+    }
+}
+#+END_SRC
+
+**** App.java
+#+BEGIN_SRC java
+package cn.atcast.c_cglib;
+public class App {
+    public static void main(String[] args) {
+        // 目标对象
+        UserDao target = new UserDao();
+        // class cn.itcast.c_cglib.UserDao
+        System.out.println(target.getClass());
+        // 代理对象
+        UserDao proxy = (UserDao) new ProxyFactory(target).getProxyInstance();
+        // UserDao子类：class cn.atcast.c_cglib.UserDao$$EnhancerByCGLIB$$25d4aeab
+        System.out.println(proxy.getClass());
+        // 执行代理对象的方法
+        proxy.save();
+    }
+}
+#+END_SRC
+
+** 手动实现AOP编程
+AOP 面向切面的编程，AOP可以实现“业务代码”与“关注点代码”分离
+
+#+BEGIN_SRC java
+public void add(User user) {  // 保存一个用户
+    Session session = null;
+    Transaction trans = null;
+    try {
+        session = HibernateSessionFactoryUtils.getSession();   // 【关注点代码】
+        trans = session.beginTransaction();    // 【关注点代码】
+        session.save(user);     // 核心业务代码
+        trans.commit();     //…【关注点代码】
+    } catch (Exception e) {
+        e.printStackTrace();
+        if(trans != null){
+            trans.rollback();   //..【关注点代码】
+        }
+    } finally{
+        HibernateSessionFactoryUtils.closeSession(session);   ////..【关注点代码】
+    }
+}
+#+END_SRC
+
+分析总结：
+关注点代码，就是指重复执行的代码。
+
+业务代码与关注点代码分离，好处？
+- 关注点代码写一次即可；
+- 开发者只需要关注核心业务；
+- 运行时期，执行核心业务代码时候动态植入关注点代码； 【代理】
+*** Dao层与AOP耦合
+**** IUserDao.java
+#+BEGIN_SRC java
+package cn.atcast.d_myaop;
+// 接口
+public interface IUserDao {
+    void save();    
+}
+#+END_SRC
+
+**** UserDao.java
+#+BEGIN_SRC java
+package cn.atcast.d_myaop;
+import javax.annotation.Resource;
+import org.springframework.stereotype.Component;
+/**
+ * 目标对象
+*/
+@Component   // 加入容器
+public class UserDao implements IUserDao{
+    // 重复执行代码形成的一个类
+    @Resource
+    private Aop aop;
+
+    @Override
+    public void save() {
+        aop.begin();
+    System.out.println("-----核心业务：保存！！！------");
+        aop.commite();
+    }
+}
+#+END_SRC
+
+**** Aop.java
+#+BEGIN_SRC java
+package cn.atcast.d_myaop;
+import org.springframework.stereotype.Component;
+@Component  // 加入IOC容器
+public class Aop {
+    // 重复执行的代码
+    public void begin(){
+        System.out.println("开始事务/异常");
+    }
+    public void commite(){
+        System.out.println("提交事务/关闭");
+    }
+}
+#+END_SRC
+
+**** bean.xml
+#+BEGIN_SRC nxml
+ <?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:p="http://www.springframework.org/schema/p"
+    xmlns:context="http://www.springframework.org/schema/context"
+    xsi:schemaLocation="
+        http://www.springframework.org/schema/beans
+        http://www.springframework.org/schema/beans/spring-beans.xsd
+        http://www.springframework.org/schema/context
+        http://www.springframework.org/schema/context/spring-context.xsd">
+    <!-- 开启注解扫描 -->
+    <context:component-scan base-package="cn.atcast.d_myaop"></context:component-scan>
+</beans>
+#+END_SRC
+
+**** App.java
+#+BEGIN_SRC java
+package cn.atcast.d_myaop;
+import org.junit.Test;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.support.ClassPathXmlApplicationContext;
+public class App {
+    ApplicationContext ac = 
+        new ClassPathXmlApplicationContext("cn/atcast/d_myaop/bean.xml");
+
+    @Test
+    public void testApp() {
+        IUserDao userDao = (IUserDao) ac.getBean("userDao");
+        userDao.save();
+    }
+}
+#+END_SRC
+
+*** Dao层与AOP解耦
+**** IUserDao.java
+#+BEGIN_SRC java
+package cn.atcast.d_myaop1;
+// 接口
+public interface IUserDao {
+    void save();
+}
+#+END_SRC
+
+**** UserDao.java
+#+BEGIN_SRC java
+package cn.atcast.d_myaop1;
+import org.springframework.stereotype.Component;
+/**
+ * 目标对象
+ *
+ */
+@Component   // 加入容器
+public class UserDao implements IUserDao{
+    @Override
+    public void save() {
+    System.out.println("-----核心业务：保存！！！------");
+    }
+}
+#+END_SRC
+
+**** Aop.java
+#+BEGIN_SRC java
+package cn.atcast.d_myaop1;
+import org.springframework.stereotype.Component;
+@Component  // 加入IOC容器  （切面）
+public class Aop {
+    // 重复执行的代码
+    public void begin(){
+        System.out.println("开始事务/异常");
+    }
+    public void commite(){
+        System.out.println("提交事务/关闭");
+    }
+}
+#+END_SRC
+
+**** ProxyFactory.java
+#+BEGIN_SRC java
+package cn.atcast.d_myaop1;
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
+/**
+ * 代理工厂
+ *
+ */
+public class ProxyFactory {
+    // 目标对象
+    private static Object target;
+    private static Aop aop;
+    // 生成代理对象的方法
+    public static Object getProxyInstance(Object target_,Aop aop_){
+        
+        target = target_;
+        aop = aop_;
+        
+        return Proxy.newProxyInstance(
+                target.getClass().getClassLoader(), 
+                target.getClass().getInterfaces(), 
+                new InvocationHandler() {
+                    @Override
+                    public Object invoke(Object proxy, Method method, Object[] args)
+                            throws Throwable {
+                        aop.begin();// 执行重复代码
+                        // 执行目标对象的方法
+                        Object returnValue = method.invoke(target, args);
+                        aop.commite(); // 执行重复代码
+                        return returnValue;
+                    }
+                });
+    }
+}
+#+END_SRC
+
+**** bean.xml
+#+BEGIN_SRC nxml
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:p="http://www.springframework.org/schema/p"
+    xmlns:context="http://www.springframework.org/schema/context"
+    xsi:schemaLocation="
+        http://www.springframework.org/schema/beans
+        http://www.springframework.org/schema/beans/spring-beans.xsd
+        http://www.springframework.org/schema/context
+        http://www.springframework.org/schema/context/spring-context.xsd">
+    <!-- 开启注解扫描 -->
+    <context:component-scan base-package="cn.atcast.d_myaop1"></context:component-scan>
+    <!-- 调用工厂方法，返回UserDao代理后的对象 -->
+    <bean id="userDao_proxy" class="cn.atcast.d_myaop1.ProxyFactory" factory-method="getProxyInstance">
+        <constructor-arg index="0" ref="userDao"></constructor-arg>
+        <constructor-arg index="1" ref="aop"></constructor-arg>
+    </bean>
+</beans>
+#+END_SRC
+
+**** App.java
+#+BEGIN_SRC java
+package cn.atcast.d_myaop1;
+import org.junit.Test;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.support.ClassPathXmlApplicationContext;
+
+public class App {
+    ApplicationContext ac = 
+        new ClassPathXmlApplicationContext("cn/atcast/d_myaop1/bean.xml");
+    @Test
+    public void testApp() {
+    IUserDao userDao = (IUserDao) ac.getBean("userDao_proxy");
+        //System.out.println(userDao.getClass());
+        userDao.save();
+    }
+}
+#+END_SRC
+** AOP编程
+=Aop=  aspect object programming  面向切面编程
+功能： 让关注点代码与业务代码分离
+=关注点=
+重复代码就叫做关注点
+=切面=
+关注点形成的类，就叫切面(类)
+面向切面编程，就是指对很多功能都有的重复的代码抽取，再在运行的时候往业务方法上动态植入“切面类代码”。
+=切入点=
+执行目标对象方法，动态植入切面代码。
+可以通过切入点表达式，指定拦截哪些类的哪些方法；给指定的类在运行的时候植入切面类代码。
+
+*** 注解方式实现AOP编程
+步骤：
+1. 先引入aop相关jar文件             
+| spring-aop-3.2.5.RELEASE.jar | 【spring3.2源码】                                    |
+| aopalliance.jar              | 【spring2.5源码/lib/aopalliance】                    |
+| =aspectjweaver.jar=          | 【spring2.5源码/lib/aspectj】或【aspectj-1.8.2\lib】 |
+| =aspectjrt.jar=              | 【spring2.5源码/lib/aspectj】或【aspectj-1.8.2\lib】 |
+
+注意： 用到spring2.5版本的jar文件，如果用jdk1.7可能会有问题。
+需要升级aspectj组件，即使用aspectj-1.8.2版本中提供jar文件提供。
+2. bean.xml中引入aop名称空间
+3. 开启aop注解
+4. 使用注解
+| @Aspect                                                | 指定一个类为切面类|
+| @Pointcut("execution(* cn.atcast.e_aop_anno.*.*(..))") | 指定切入点表达式|
+| @Before("pointCut_()")                                 | 前置通知: 目标方法之前执行|
+| @After("pointCut_()")                                  | 后置通知：目标方法之后执行（始终执行）|
+| @AfterReturning("pointCut_()")                         | 返回后通知： 执行方法结束前执行|
+| @AfterThrowing("pointCut_()")                          | 异常通知: 出现异常时候执行 |
+| @Around("pointCut_()")                                 | 环绕通知：在方法执行前后和抛出异常时执行，相当于综合了以上三种通知。|
+
+**** IUserDao.java
+#+BEGIN_SRC java
+package cn.atcast.e_aop_anno;
+// 接口
+public interface IUserDao {
+    void save();
+}
+#+END_SRC
+
+**** UserDao.java (实现接口使用jdk代理)
+#+BEGIN_SRC java
+package cn.atcast.e_aop_anno;
+import org.springframework.stereotype.Component;
+/**
+ * 目标对象
+ *
+ */
+@Component   // 加入容器
+public class UserDao implements IUserDao{
+    @Override
+    public void save() {
+        //int i=1/0;
+    System.out.println("-----核心业务：保存！！！------"); 
+    }
+}
+#+END_SRC
+
+**** OrderDao.java(没有实现接口使用cglib代理)
+#+BEGIN_SRC java
+package cn.atcast.e_aop_anno;
+import org.springframework.context.annotation.Scope;
+import org.springframework.stereotype.Component;
+/**
+ * 目标对象
+ *
+ */
+@Component   // 加入容器
+@Scope("prototype")
+public class OrderDao{
+    public void save() {
+System.out.println("-----核心业务：订单保存！！！------");
+    }
+}
+#+END_SRC
+
+**** Aop.java
+#+BEGIN_SRC java
+package cn.atcast.e_aop_anno;
+import org.aspectj.lang.ProceedingJoinPoint;
+import org.aspectj.lang.annotation.After;
+import org.aspectj.lang.annotation.AfterReturning;
+import org.aspectj.lang.annotation.AfterThrowing;
+import org.aspectj.lang.annotation.Around;
+import org.aspectj.lang.annotation.Aspect;
+import org.aspectj.lang.annotation.Before;
+import org.aspectj.lang.annotation.Pointcut;
+import org.springframework.stereotype.Component;
+@Component
+@Aspect  // 指定当前类为切面类
+public class Aop {
+     /*
+    //方法一:
+    @Before("execution(* cn.atcast.e_aop_anno.*.*(..))")
+    public void begin(){
+        System.out.println("开始事务/异常");
+    }
+    
+    // 后置/最终通知：在执行目标方法之后执行  【无论是否出现异常最终都会执行】
+    @After("execution(* cn.atcast.e_aop_anno.*.*(..))")
+    public void after(){
+        System.out.println("提交事务/关闭");
+    }
+    */
+     
+     //方法二：由于方法一要在所有方法都要写拦截的逻辑execution(* cn.atcast.e_aop_anno.*.*(..))，所以抽取出来。
+    // 指定切入点表达式： 拦截哪些方法； 即为哪些类生成代理对象 （现在拦截的是此包下的所有类的所有方法。）
+    @Pointcut("execution(* cn.atcast.e_aop_anno.*.*(..))")
+    public void pointCut_(){  //方法名随意指定
+    }
+    
+    // 前置通知 : 在执行目标方法之前执行
+    @Before("pointCut_()")
+    public void begin(){
+        System.out.println("开始事务/异常");
+    }
+    
+    // 后置/最终通知：在执行目标方法之后执行  【无论是否出现异常最终都会执行】
+    @After("pointCut_()")
+    public void after(){
+        System.out.println("提交事务/关闭");
+    }
+    
+// 返回后通知： 在调用目标方法结束后执行 【出现异常不执行】
+    @AfterReturning("pointCut_()")
+    public void afterReturning() {
+        System.out.println("afterReturning()");
+    }
+    
+    // 异常通知： 当目标方法执行异常时候执行此关注点代码
+    @AfterThrowing("pointCut_()")
+    public void afterThrowing(){
+        System.out.println("afterThrowing()");
+    }
+    
+    // 环绕通知：环绕目标方式执行
+    @Around("pointCut_()")
+    public void around(ProceedingJoinPoint pjp) throws Throwable{
+        System.out.println("环绕前....");
+        pjp.proceed();  // 执行目标方法
+        System.out.println("环绕后....");
+    }
+}
+#+END_SRC
+
+**** bean.xml
+#+BEGIN_SRC nxml
+ <?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:p="http://www.springframework.org/schema/p"
+    xmlns:context="http://www.springframework.org/schema/context"
+    xmlns:aop="http://www.springframework.org/schema/aop"
+    xsi:schemaLocation="
+        http://www.springframework.org/schema/beans
+        http://www.springframework.org/schema/beans/spring-beans.xsd
+        http://www.springframework.org/schema/context
+        http://www.springframework.org/schema/context/spring-context.xsd
+        http://www.springframework.org/schema/aop
+        http://www.springframework.org/schema/aop/spring-aop.xsd">
+    
+    <!-- 开启注解扫描 -->
+    <context:component-scan base-package="cn.atcast.e_aop_anno">
+</context:component-scan>
+    
+    <!-- 开启aop注解方式 -->
+    <aop:aspectj-autoproxy></aop:aspectj-autoproxy>
+</beans>
+#+END_SRC
+
+**** App.java
+#+BEGIN_SRC java
+package cn.atcast.e_aop_anno;
+import org.junit.Test;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.support.ClassPathXmlApplicationContext;
+
+public class App {
+    ApplicationContext ac = 
+        new ClassPathXmlApplicationContext("cn/atcast/e_aop_anno/bean.xml");
+    // 目标对象有实现接口，spring会自动选择"JDK代理"
+    @Test
+    public void testApp() {
+        IUserDao userDao = (IUserDao) ac.getBean("userDao");
+        System.out.println(userDao.getClass());//$Proxy001  
+        userDao.save();
+    }
+    
+    // 目标对象没有实现接口， spring会用"cglib代理"
+    @Test
+    public void testCglib() {
+        OrderDao orderDao = (OrderDao) ac.getBean("orderDao");
+        System.out.println(orderDao.getClass());
+        orderDao.save();
+    }
+}
+#+END_SRC
+
+*** XML方式实现AOP编程
+1. 引入jar文件  【aop 相关jar， 4个】
+2. 引入aop名称空间
+3. aop 配置
+    - 配置切面类 （重复执行代码形成的类）
+    - aop配置   拦截哪些方法 / 拦截到方法后应用通知代码
+
+**** IUserDao.java
+#+BEGIN_SRC java
+package cn.atcast.f_aop_xml;
+// 接口
+public interface IUserDao {
+    void save();
+}
+#+END_SRC
+
+**** UserDao.java
+#+BEGIN_SRC java
+package cn.atcast.f_aop_xml;
+/**
+ * 目标对象
+ *
+ */
+public class UserDao implements IUserDao{
+    @Override
+    public void save() {
+    System.out.println("-----核心业务：保存！！！------"); 
+    }
+}
+#+END_SRC
+
+**** OrderDao.java
+#+BEGIN_SRC java
+package cn.atcast.f_aop_xml;
+import org.springframework.stereotype.Component;
+/**
+ * 目标对象
+ *
+ */ 
+
+public class OrderDao{
+    public void save() {
+        System.out.println("-核心业务：保存订单---");
+    }
+}
+#+END_SRC
+
+**** Aop.java
+#+BEGIN_SRC java
+package cn.atcast.f_aop_xml;
+import org.aspectj.lang.ProceedingJoinPoint;
+import org.aspectj.lang.annotation.After;
+import org.aspectj.lang.annotation.AfterReturning;
+import org.aspectj.lang.annotation.AfterThrowing;
+import org.aspectj.lang.annotation.Around;
+import org.aspectj.lang.annotation.Aspect;
+import org.aspectj.lang.annotation.Before;
+import org.aspectj.lang.annotation.Pointcut;
+import org.springframework.stereotype.Component;
+// 切面类
+public class Aop {
+    public void begin(){
+        System.out.println("开始事务/异常");
+    }
+    public void after(){
+        System.out.println("提交事务/关闭");
+    }
+    
+    public void afterReturning() {
+        System.out.println("afterReturning()");
+    }
+    
+    public void afterThrowing(){
+        System.out.println("afterThrowing()");
+    }
+    
+    public void around(ProceedingJoinPoint pjp) throws Throwable{
+        System.out.println("环绕前....");
+        pjp.proceed();  // 执行目标方法
+        System.out.println("环绕后....");
+    }
+}
+#+END_SRC
+
+**** bean.xml
+#+BEGIN_SRC nxml
+ <?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:p="http://www.springframework.org/schema/p"
+   xmlns:context="http://www.springframework.org/schema/context"
+    xmlns:aop="http://www.springframework.org/schema/aop"
+    xsi:schemaLocation="
+        http://www.springframework.org/schema/beans
+        http://www.springframework.org/schema/beans/spring-beans.xsd
+        http://www.springframework.org/schema/context
+        http://www.springframework.org/schema/context/spring-context.xsd
+        http://www.springframework.org/schema/aop
+        http://www.springframework.org/schema/aop/spring-aop.xsd">
+    <!-- dao 实例 -->
+    <bean id="userDao" class="cn.atcast.f_aop_xml.UserDao"></bean>
+    <bean id="orderDao" class="cn.atcast.f_aop_xml.OrderDao"></bean>
+    <!-- 切面类 -->
+    <bean id="aop" class="cn.atcast.f_aop_xml.Aop"></bean>
+    
+    <!-- Aop配置 -->
+    <aop:config>
+        <!-- 定义一个切入点表达式： 拦截哪些方法 -->
+        <aop:pointcut expression="execution(* cn.atcast.f_aop_xml.*.*(..))" id="pt"/>
+        <!-- 切面 -->
+        <aop:aspect ref="aop">
+            <!-- 环绕通知 -->
+            <aop:around method="around" pointcut-ref="pt"/>
+            <!-- 前置通知： 在目标方法调用前执行 -->
+            <aop:before method="begin" pointcut-ref="pt"/>
+            <!-- 后置通知： -->
+            <aop:after method="after" pointcut-ref="pt"/>
+            <!-- 返回后通知 -->
+            <aop:after-returning method="afterReturning" pointcut-ref="pt"/>
+            <!-- 异常通知 -->
+            <aop:after-throwing method="afterThrowing" pointcut-ref="pt"/>
+        </aop:aspect>
+    </aop:config>
+</beans>
+#+END_SRC
+
+**** App.java
+#+BEGIN_SRC java
+package cn.atcast.f_aop_xml;
+import org.junit.Test;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.support.ClassPathXmlApplicationContext;
+
+public class App {
+    ApplicationContext ac = 
+        new ClassPathXmlApplicationContext("cn/atcast/f_aop_xml/bean.xml");
+
+    // 目标对象有实现接口，spring会自动选择“JDK代理”
+    @Test
+    public void testApp() {
+        IUserDao userDao = (IUserDao) ac.getBean("userDao");
+        System.out.println(userDao.getClass());//$Proxy001  
+        userDao.save();
+    }
+    
+    // 目标对象没有实现接口， spring会用“cglib代理”
+    @Test
+    public void testCglib() {
+        OrderDao orderDao = (OrderDao) ac.getBean("orderDao");
+        System.out.println(orderDao.getClass());
+        orderDao.save();
+    }
+}
+#+END_SRC
+
+** 切入点表达式
+切入点表达式,可以对指定的“方法”进行拦截；从而给指定的方法所在的类生成代   理对象。
+
+#+BEGIN_SRC java
+execution(* cn.com.dao.impl..*.*(..)) 
+#+END_SRC
+- 第一个*代表任何返回值
+- cn.com.dao.impl..*:代表要拦截cn.com.dao.impl包下的以及子包下的所有类
+- .*(..)：这个代表任意方法，就是说上面那些类的任意方法，（）里面的点，代表任意参数
+
+比如要拦截add开头的和delete开头的方法？
+#+BEGIN_SRC java
+execution(* add*(..))&& execution(* delete*(..))
+#+END_SRC
+
+**** IUserDao.java
+#+BEGIN_SRC java
+package cn.atcast.g_pointcut;
+// 接口
+public interface IUserDao {
+    void save();
+}
+#+END_SRC
+
+**** UserDao.java
+#+BEGIN_SRC java
+package cn.atcast.g_pointcut;
+/**
+ * 目标对象
+ *
+ */
+public class UserDao implements IUserDao{
+    @Override
+    public void save() {
+System.out.println("--核心业务：保存！！！userdao---"); 
+    }
+}
+#+END_SRC
+
+**** OrderDao.java
+#+BEGIN_SRC java
+package cn.atcast.g_pointcut;
+import org.springframework.stereotype.Component;
+/**
+ * 目标对象
+ */
+public class OrderDao{
+    public void save() {
+        System.out.println("---核心业务：保存orerdao");
+    }
+}
+#+END_SRC
+
+**** Aop.java
+#+BEGIN_SRC java
+package cn.atcast.g_pointcut;
+import org.aspectj.lang.ProceedingJoinPoint;
+import org.aspectj.lang.annotation.After;
+import org.aspectj.lang.annotation.AfterReturning;
+import org.aspectj.lang.annotation.AfterThrowing;
+import org.aspectj.lang.annotation.Around;
+import org.aspectj.lang.annotation.Aspect;
+import org.aspectj.lang.annotation.Before;
+import org.aspectj.lang.annotation.Pointcut;
+import org.springframework.stereotype.Component;
+// 切面类
+public class Aop {
+    public void begin(){
+        System.out.println("开始事务/异常");
+    }
+    
+    public void after(){
+        System.out.println("提交事务/关闭");
+    }
+    
+    public void afterReturning() {
+        System.out.println("afterReturning()");
+    }
+    
+    public void afterThrowing(){
+        System.out.println("afterThrowing()");
+    }
+    
+    public void around(ProceedingJoinPoint pjp) throws Throwable{
+        System.out.println("环绕前....");
+        pjp.proceed();  // 执行目标方法
+        System.out.println("环绕后....");
+    }
+}
+#+END_SRC
+
+**** bean.xml
+#+BEGIN_SRC nxml
+ <?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:p="http://www.springframework.org/schema/p"
+    xmlns:context="http://www.springframework.org/schema/context"
+    xmlns:aop="http://www.springframework.org/schema/aop"
+    xsi:schemaLocation="
+        http://www.springframework.org/schema/beans
+        http://www.springframework.org/schema/beans/spring-beans.xsd
+        http://www.springframework.org/schema/context
+        http://www.springframework.org/schema/context/spring-context.xsd
+        http://www.springframework.org/schema/aop
+        http://www.springframework.org/schema/aop/spring-aop.xsd">
+    
+    <!-- dao 实例 -->
+    <bean id="userDao" class="cn.atcast.g_pointcut.UserDao"></bean>
+    <bean id="orderDao" class="cn.atcast.g_pointcut.OrderDao"></bean>
+    
+    <!-- 切面类 -->
+    <bean id="aop" class="cn.atcast.g_pointcut.Aop"></bean>
+    
+    <!-- Aop配置 -->
+    <aop:config>
+        
+        <!-- 定义一个切入点表达式： 拦截哪些方法 -->
+        <!--<aop:pointcut expression="execution(* cn.atcast.g_pointcut.*.*(..))" id="pt"/>-->
+        
+        <!-- 【拦截所有public方法】 -->
+        <!--<aop:pointcut expression="execution(public * *(..))" id="pt"/>-->
+        
+        <!-- 【拦截所有save开头的方法 】 -->
+        <!--<aop:pointcut expression="execution(* save*(..))" id="pt"/>-->
+        
+        <!-- 【拦截指定类的指定方法, 拦截时候一定要定位到方法】 -->
+        <!--<aop:pointcut expression="execution(public * cn.atcast.g_pointcut.OrderDao.save(..))" id="pt"/>-->
+        
+        <!-- 【拦截指定类的所有方法】 -->
+        <!--<aop:pointcut expression="execution(* cn.atcast.g_pointcut.UserDao.*(..))" id="pt"/>-->
+        
+        <!-- 【拦截指定包，以及其子包下所有类的所有方法】 -->
+        <!--<aop:pointcut expression="execution(* cn..*.*(..))" id="pt"/>-->
+        
+        <!-- 【多个表达式】 -->
+        <!--<aop:pointcut expression="execution(* cn.atcast.g_pointcut.UserDao.save()) || execution(* cn.atcast.g_pointcut.OrderDao.save())" id="pt"/>-->
+        <!--<aop:pointcut expression="execution(* cn.atcast.g_pointcut.UserDao.save()) or execution(* cn.atcast.g_pointcut.OrderDao.save())" id="pt"/>-->
+        
+        
+        <!-- 【取非值】 -->
+        <!--<aop:pointcut expression="!execution(* cn.atcast.g_pointcut.OrderDao.save())" id="pt"/>-->
+        <!-- 用not前要一个空格 -->
+        <aop:pointcut expression=" not execution(* cn.atcast.g_pointcut.OrderDao.save())" id="pt"/>
+        
+        <!-- 切面 -->
+        <aop:aspect ref="aop">
+            <!-- 环绕通知 -->
+            <aop:around method="around" pointcut-ref="pt"/>
+        </aop:aspect>
+    </aop:config>
+</beans>
+#+END_SRC
+
+**** App.java
+#+BEGIN_SRC java
+package cn.atcast.g_pointcut;
+import org.junit.Test;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.support.ClassPathXmlApplicationContext;
+
+public class App {
+    ApplicationContext ac = 
+        new ClassPathXmlApplicationContext("cn/atcast/g_pointcut/bean.xml");
+    // 目标对象有实现接口，spring会自动选择“JDK代理”
+    @Test
+    public void testApp() {
+        IUserDao userDao = (IUserDao) ac.getBean("userDao");
+        System.out.println(userDao.getClass());//$Proxy001  
+        userDao.save();
+    }
+    
+    // 目标对象没有实现接口， spring会用“cglib代理”
+    @Test
+    public void testCglib() {
+        OrderDao orderDao = (OrderDao) ac.getBean("orderDao");
+        System.out.println(orderDao.getClass());
+        orderDao.save();
+    }
+} 
+#+END_SRC
+** Spring对jdbc支持
+使用步骤：
+1. 引入jar文件
+   - spring-jdbc-3.2.5.RELEASE.jar
+   - spring-tx-3.2.5.RELEASE.jar
+2. 优化数据库连接
+
+**** Dept.java
+#+BEGIN_SRC java
+package cn.atcast.h_jdbc;
+public class Dept {
+    private int deptId;
+    private String deptName;
+    public int getDeptId() {
+        return deptId;
+    }
+    public void setDeptId(int deptId) {
+        this.deptId = deptId;
+    }
+    public String getDeptName() {
+        return deptName;
+    }
+    public void setDeptName(String deptName) {
+        this.deptName = deptName;
+    }
+}
+#+END_SRC
+
+**** UserDao1.java
+#+BEGIN_SRC java
+package cn.atcast.h_jdbc;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.Statement;
+public class UserDao1 {
+    /*
+     *  保存方法
+     *  需求优化的地方：
+     *      1. 连接管理（UserDao01.java)
+     *      2. jdbc操作重复代码封装（UserDao02.java)
+     */
+    public static void main(String args[]){
+            save();
+    }
+    public static void save() {
+        try {
+            String sql = "insert into t_dept(deptName) values('test');";
+            Connection con = null;
+            Statement stmt = null;
+            Class.forName("com.mysql.jdbc.Driver");
+            // 连接对象
+            con = DriverManager.getConnection("jdbc:mysql:///hib_demo", "root", "root");
+            // 执行命令对象
+            stmt =  con.createStatement();
+            // 执行
+            stmt.execute(sql);
+            // 关闭
+            stmt.close();
+            con.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+}
+#+END_SRC
+
+**** UserDao2.java
+#+BEGIN_SRC java
+package cn.atcast.h_jdbc;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.Statement;
+import javax.sql.DataSource;
+public class UserDao2 {
+    // IOC容器注入
+    private DataSource dataSource;
+    public void setDataSource(DataSource dataSource) {
+        this.dataSource = dataSource;
+    }
+    
+    public void save() {
+        try {
+            String sql = "insert into t_dept(deptName) values('test');";
+            Connection con = null;
+            Statement stmt = null;
+            // 连接对象
+            con = dataSource.getConnection();
+            // 执行命令对象
+            stmt =  con.createStatement();
+            // 执行
+            stmt.execute(sql);
+            // 关闭
+            stmt.close();
+            con.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+}
+#+END_SRC
+
+**** App2.java
+#+BEGIN_SRC java
+package cn.atcast.h_jdbc;
+import org.junit.Test;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.support.ClassPathXmlApplicationContext;
+public class App2 {
+    // 容器对象
+    ApplicationContext ac = new ClassPathXmlApplicationContext("cn/atcast/h_jdbc/bean.xml");
+    @Test
+    public void testApp() throws Exception {
+        UserDao2 ud = (UserDao2) ac.getBean("userDao2");
+        ud.save();
+    }
+}
+#+END_SRC
+
+**** bean.xml
+#+BEGIN_SRC nxml
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:p="http://www.springframework.org/schema/p"
+    xmlns:context="http://www.springframework.org/schema/context"
+    xmlns:aop="http://www.springframework.org/schema/aop"
+    xsi:schemaLocation="
+        http://www.springframework.org/schema/beans
+        http://www.springframework.org/schema/beans/spring-beans.xsd
+        http://www.springframework.org/schema/context
+        http://www.springframework.org/schema/context/spring-context.xsd
+        http://www.springframework.org/schema/aop
+        http://www.springframework.org/schema/aop/spring-aop.xsd">
+    
+    <!-- 1. 数据源对象: C3P0连接池 -->
+    <bean id="dataSource" class="com.mchange.v2.c3p0.ComboPooledDataSource">
+        <property name="driverClass" value="com.mysql.jdbc.Driver"></property>
+        <property name="jdbcUrl" value="jdbc:mysql:///hib_demo"></property>
+        <property name="user" value="root"></property>
+        <property name="password" value="root"></property>
+        <property name="initialPoolSize" value="3"></property>
+        <property name="maxPoolSize" value="10"></property>
+        <property name="maxStatements" value="100"></property>
+        <property name="acquireIncrement" value="2"></property>
+    </bean>
+    
+    <!--UserDao2实例 -->
+    <bean id="userDao2" class="cn.atcast.h_jdbc.UserDao2">
+         <property name="dataSource" ref="dataSource"></property>
+    </bean>
+    
+    <!-- 2. 创建JdbcTemplate对象 -->
+    <bean id="jdbcTemplate" class="org.springframework.jdbc.core.JdbcTemplate">
+        <property name="dataSource" ref="dataSource"></property>
+    </bean>
+    
+    <!-- UserDao3实例 -->
+    <bean id="userDao3" class="cn.atcast.h_jdbc.UserDao3">
+        <property name="jdbcTemplate" ref="jdbcTemplate"></property>
+    </bean>
+    
+</beans>
+#+END_SRC
+
+**** UserDao3.java
+#+BEGIN_SRC java
+package cn.atcast.h_jdbc;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.List;
+import java.util.Map;
+import javax.sql.DataSource;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowCallbackHandler;
+import org.springframework.jdbc.core.RowMapper;
+
+public class UserDao3 {
+    // IOC容器注入
+//  private DataSource dataSource;
+//  public void setDataSource(DataSource dataSource) {
+//      this.dataSource = dataSource;
+//  }
+    
+    private JdbcTemplate jdbcTemplate;
+    public void setJdbcTemplate(JdbcTemplate jdbcTemplate) {
+        this.jdbcTemplate = jdbcTemplate;
+    }
+    public void save() {
+        String sql = "insert into t_dept(deptName) values('test');";
+        jdbcTemplate.update(sql);
+    }
+    
+    public Dept findById(int id) {
+        String sql = "select * from t_dept where deptId=?";
+        List<Dept> list = jdbcTemplate.query(sql,new MyResult(), id);
+        return (list!=null && list.size()>0) ? list.get(0) : null;
+    }
+    
+    public List<Dept> getAll() {
+        String sql = "select * from t_dept";
+        List<Dept> list = jdbcTemplate.query(sql, new MyResult());
+        return list;
+    }
+    
+    class MyResult implements RowMapper<Dept>{
+        // 如何封装一行记录
+        @Override
+        public Dept mapRow(ResultSet rs, int index) throws SQLException {
+            Dept dept = new Dept();
+            dept.setDeptId(rs.getInt("deptId"));
+            dept.setDeptName(rs.getString("deptName"));
+            return dept;
+        }   
+    }
+}
+#+END_SRC
+
+**** App3.java
+#+BEGIN_SRC java
+package cn.atcast.h_jdbc;
+import org.junit.Test;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.support.ClassPathXmlApplicationContext;
+public class App3 {
+    // 容器对象
+    ApplicationContext ac = new ClassPathXmlApplicationContext("cn/atcast/h_jdbc/bean.xml");
+    @Test
+    public void testApp() throws Exception {
+        UserDao3 ud = (UserDao3) ac.getBean("userDao3");
+//      ud.save();
+        System.out.println(ud.findById(1));
+        System.out.println(ud.getAll());
+    }
+}
+#+END_SRC
+** 程序中事务控制
+程序的“事务控制”可以用aop实现。即只需要写一次，运行时候动态织入到业务方法上。Spring提供了对事务的管理，开发者只需要按照Spring的方式去做就行。
+
+一个业务的成功： 调用的service是执行成功的，意味着service中调用的所有的dao是执行成功的。 **事务应该在Service层统一控制**
+
+细粒度的事务控制可以对指定的方法、指定的方法的某几行添加事务控制(比较灵活，但开发起来比较繁琐： 每次都要开启、提交、回滚.)
+
+粗粒度的事务控制只能给整个方法应用事务，不可以对方法的某几行应用事务。(因为aop拦截的是方法。)
+
+** 声明式事务控制
+本小结源码见 =SpringDemo03=
+
+Spring提供了对事务的管理, 这个就叫声明式事务管理。
+
+Spring提供了对事务控制的实现。用户如果想用Spring的声明式事务管理，只需要在配置文件中配置即可；不想使用时直接移除配置。这个实现了对事务控制的最大程度的解耦。
+
+Spring声明式事务管理，核心实现就是基于Aop。
+
+如何管理事务，事务是只读的还是读写的，对于查询的find()是只读，对于保存的save()是读写
+
+
+如果一次执行单条查询语句，则没有必要启用事务支持，数据库默认支持SQL执行期间的读一致性； 
+
+如果一次执行多条查询语句，例如统计查询，报表查询，在这种场景下，多条查询SQL必须保证整体的读一致性，否则，在前条SQL查询之后，后条SQL查询之前，数据被其他用户改变，则该次整体的统计查询将会出现读数据不一致的状态。此时，应该启用事务支持
+
+~read-only="true"~ 表示该事务为只读事务，比如上面说的多条查询的这种情况可以使用只读事务，由于只读事务不存在数据的修改，因此数据库将会为只读事务提供一些优化手段。 
+
+在Spring的Hibernate封装中，指定只读事务的办法为： 
+- bean配置文件中，prop属性增加“read-Only”
+- 或者用注解方式@Transactional(readOnly=true)
+
+Spring中设置只读事务是利用上面两种方式（根据实际情况）
+
+在将事务设置成只读后，相当于将数据库设置成只读数据库，此时若要进行写的操作会出现错误。
+
+*** XML实现
+1. 引入spring-aop相关的4个jar文件
+2. 引入aop名称空间  【XML配置方式需要引入】
+3. 引入tx名称空间    【事务方式必须引入】
+
+**** Dept.java
+#+BEGIN_SRC java
+package cn.atcast.a_tx;
+public class Dept {
+    private int deptId;
+    private String deptName;
+    public int getDeptId() {
+        return deptId;
+    }
+    public void setDeptId(int deptId) {
+        this.deptId = deptId;
+    }
+    public String getDeptName() {
+        return deptName;
+    }
+    public void setDeptName(String deptName) {
+        this.deptName = deptName;
+    }
+}
+#+END_SRC
+
+**** DeptDao.java
+#+BEGIN_SRC java
+package cn.atcast.a_tx;
+import org.springframework.jdbc.core.JdbcTemplate;
+/**
+ * dao实现，使用Spring对jdbc支持功能
+ *
+ */
+public class DeptDao {
+    // 容器注入JdbcTemplate对象
+    private JdbcTemplate jdbcTemplate;
+    public void setJdbcTemplate(JdbcTemplate jdbcTemplate) {
+        this.jdbcTemplate = jdbcTemplate;
+    }
+
+    public void save(Dept dept){
+String sql = "insert into t_dept (deptName) values(?)";
+        jdbcTemplate.update(sql,dept.getDeptName());
+    }
+}
+#+END_SRC
+
+**** DeptService.java
+#+BEGIN_SRC java
+package cn.atcast.a_tx;
+import org.springframework.jdbc.core.JdbcTemplate;
+/**
+ * Service
+ *
+ */
+public class DeptService {
+    // 容器注入dao对象
+    private DeptDao deptDao;
+    public void setDeptDao(DeptDao deptDao) {
+        this.deptDao = deptDao;
+    }
+    /*
+     * 事务控制
+     */
+    public void save(Dept dept){
+        // 第一次调用
+        deptDao.save(dept);
+     //int i = 1/0; // 异常： 整个Service.save()执行成     功的要回滚
+        // 第二次调用
+        deptDao.save(dept);
+    }
+}
+#+END_SRC
+
+**** bean.xml
+#+BEGIN_SRC nxml
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+    xmlns:p="http://www.springframework.org/schema/p"
+    xmlns:context="http://www.springframework.org/schema/context"
+    xmlns:aop="http://www.springframework.org/schema/aop"
+    xmlns:tx="http://www.springframework.org/schema/tx"
+    xsi:schemaLocation="http://www.springframework.org/schema/beans
+         http://www.springframework.org/schema/beans/spring-beans.xsd
+         http://www.springframework.org/schema/context
+         http://www.springframework.org/schema/context/spring-context.xsd
+         http://www.springframework.org/schema/aop
+         http://www.springframework.org/schema/aop/spring-aop.xsd
+         http://www.springframework.org/schema/tx
+         http://www.springframework.org/schema/tx/spring-tx.xsd">
+    <!-- 1. 数据源对象: C3P0连接池 -->
+    <bean id="dataSource" class="com.mchange.v2.c3p0.ComboPooledDataSource">
+        <property name="driverClass" value="com.mysql.jdbc.Driver"></property>
+        <property name="jdbcUrl" value="jdbc:mysql:///hib_demo"></property>
+        <property name="user" value="root"></property>
+        <property name="password" value="root"></property>
+        <property name="initialPoolSize" value="3"></property>
+        <property name="maxPoolSize" value="10"></property>
+        <property name="maxStatements" value="100"></property>
+        <property name="acquireIncrement" value="2"></property>
+    </bean>
+    
+    <!-- 2. JdbcTemplate工具类实例 -->
+    <bean id="jdbcTemplate" class="org.springframework.jdbc.core.JdbcTemplate">
+        <property name="dataSource" ref="dataSource"></property>
+    </bean>
+    
+    <!-- 3. dao实例 -->
+    <bean id="deptDao" class="cn.atcast.a_tx.DeptDao">
+        <property name="jdbcTemplate" ref="jdbcTemplate"></property>
+    </bean>
+ 
+    <!-- 4. service实例 -->
+    <bean id="deptService" class="cn.atcast.a_tx.DeptService">
+        <property name="deptDao" ref="deptDao"></property>
+    </bean>
+    
+    <!-- #############5. Spring声明式事务管理配置############### -->
+    <!-- 5.1 配置事务管理器类 -->
+    <bean id="txManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+        <property name="dataSource" ref="dataSource"></property>
+    </bean>
+    
+    <!-- 5.2 配置事务增强(如何管理事务，对于找到的方法进行事务控制的描述，哪些事务是只读的还是读写的，对于查询的find()是只读，对于保存的save()是读写) -->
+    <tx:advice id="txAdvice" transaction-manager="txManager">
+        <tx:attributes>
+            <!-- <tx:method name="save*" read-only="false"/>
+                <tx:method name="find*" read-only="true"/> 
+            -->
+            <tx:method name="*" read-only="false"/>
+        </tx:attributes>
+    </tx:advice>
+    
+    <!-- 5.3 Aop配置：通过切入点表达式找到需要spring进行事务控制的方法-->
+    <aop:config>
+        <aop:pointcut expression="execution(* cn.atcast.a_tx.*.*(..))" id="pt"/>
+        <aop:advisor advice-ref="txAdvice" pointcut-ref="pt"/>
+    </aop:config>
+</beans>
+#+END_SRC
+
+**** App.java
+#+BEGIN_SRC java
+package cn.atcast.a_tx;
+import org.junit.Test;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.support.ClassPathXmlApplicationContext;
+public class App {
+    @Test
+    public void testApp() throws Exception {
+        //容器对象
+        ApplicationContext ac = new ClassPathXmlApplicationContext("cn/atcast/a_tx/bean.xml");
+        // 模拟数据
+        Dept dept = new Dept();
+        dept.setDeptName("测试： 开发部");
+        DeptService deptService = (DeptService) ac.getBean("deptService");
+        deptService.save(dept);
+    }
+}
+#+END_SRC
+
+*** 注解方式实现
+使用注解实现Spring的声明式事务管理，更加简单
+步骤：
+1. 必须引入Aop相关的jar文件
+2. bean.xml中指定注解方式实现声明式事务管理以及应用的事务管理器类
+3. 在需要添加事务控制的地方，写上: @Transactional
+
+**** Dept.java
+#+BEGIN_SRC java
+package cn.atcast.b_anno;
+public class Dept {
+    private int deptId;
+    private String deptName;
+    public int getDeptId() {
+        return deptId;
+    }
+    public void setDeptId(int deptId) {
+        this.deptId = deptId;
+    }
+    public String getDeptName() {
+        return deptName;
+    }
+    public void setDeptName(String deptName) {
+        this.deptName = deptName;
+    }
+}
+#+END_SRC
+
+**** DeptDao.java
+#+BEGIN_SRC java
+package cn.atcast.b_anno;
+import javax.annotation.Resource;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Repository;
+/**
+ * dao实现，使用Spring对jdbc支持功能
+ */
+@Repository  //持久层注解
+public class DeptDao {
+    @Resource
+    private JdbcTemplate jdbcTemplate;
+    public void save(Dept dept){
+String sql = "insert into t_dept (deptName) values(?)";
+        jdbcTemplate.update(sql,dept.getDeptName());
+    }
+}
+#+END_SRC
+
+**** DeptService.java
+#+BEGIN_SRC java
+package cn.atcast.b_anno;
+import javax.annotation.Resource;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+public class DeptService {
+    // 部门dao
+    @Resource
+    private DeptDao deptDao;
+    //事务控制
+    @Transactional
+    public void save(Dept dept){
+        deptDao.save(dept);
+        //int i=1/0;
+        deptDao.save(dept);
+    }
+}
+#+END_SRC
+
+**** bean.xml
+#+BEGIN_SRC java
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+    xmlns:p="http://www.springframework.org/schema/p"
+    xmlns:context="http://www.springframework.org/schema/context"
+    xmlns:aop="http://www.springframework.org/schema/aop"
+    xmlns:tx="http://www.springframework.org/schema/tx"
+    xsi:schemaLocation="http://www.springframework.org/schema/beans
+         http://www.springframework.org/schema/beans/spring-beans.xsd
+         http://www.springframework.org/schema/context
+         http://www.springframework.org/schema/context/spring-context.xsd
+         http://www.springframework.org/schema/aop
+         http://www.springframework.org/schema/aop/spring-aop.xsd
+         http://www.springframework.org/schema/tx
+         http://www.springframework.org/schema/tx/spring-tx.xsd">
+    <!-- 1. 数据源对象: C3P0连接池 -->
+    <bean id="dataSource" class="com.mchange.v2.c3p0.ComboPooledDataSource">
+        <property name="driverClass" value="com.mysql.jdbc.Driver"></property>
+        <property name="jdbcUrl" value="jdbc:mysql:///hib_demo"></property>
+        <property name="user" value="root"></property>
+        <property name="password" value="root"></property>
+        <property name="initialPoolSize" value="3"></property>
+        <property name="maxPoolSize" value="10"></property>
+        <property name="maxStatements" value="100"></property>
+        <property name="acquireIncrement" value="2"></property>
+    </bean>
+    
+    <!-- 2. JdbcTemplate工具类实例 -->
+    <bean id="jdbcTemplate" class="org.springframework.jdbc.core.JdbcTemplate">
+        <property name="dataSource" ref="dataSource"></property>
+    </bean>
+    
+    <!-- 事务管理器类 -->
+    <bean id="txManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+        <property name="dataSource" ref="dataSource"></property>
+    </bean>
+    
+    <!-- 开启注解扫描 -->
+    <context:component-scan base-package="cn.atcast.b_anno"></context:component-scan>
+    
+    <!-- 注解方式实现事务： 指定注解方式实现事务 -->
+    <tx:annotation-driven transaction-manager="txManager"/>
+</beans>
+#+END_SRC
+
+**** App.java
+#+BEGIN_SRC java
+package cn.atcast.b_anno;
+import java.util.Arrays;
+import org.junit.Test;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.support.ClassPathXmlApplicationContext;
+
+public class App {
+    @Test
+    public void testApp() throws Exception {
+        //容器对象
+        ApplicationContext ac = new ClassPathXmlApplicationContext("cn/atcast/b_anno/bean.xml");
+        // 模拟数据
+        Dept dept = new Dept();
+        dept.setDeptName("测试： 开发部");
+        
+        DeptService deptService = (DeptService) ac.getBean("deptService");
+        deptService.save(dept);
+    }
+}
+#+END_SRC
+
+*** 事务传播行为
+**** Dept.java
+#+BEGIN_SRC java
+package cn.atcast.c_anno;
+public class Dept {
+    private int deptId;
+    private String deptName;
+    public int getDeptId() {
+        return deptId;
+    }
+    public void setDeptId(int deptId) {
+        this.deptId = deptId;
+    }
+    public String getDeptName() {
+        return deptName;
+    }
+    public void setDeptName(String deptName) {
+        this.deptName = deptName;
+    }
+}
+#+END_SRC
+
+**** DeptDao.java
+#+BEGIN_SRC java
+package cn.atcast.c_anno;
+import javax.annotation.Resource;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Repository;
+/**
+ * dao实现，使用Spring对jdbc支持功能
+ */
+@Repository
+public class DeptDao {
+    @Resource
+    private JdbcTemplate jdbcTemplate;
+    public void save(Dept dept){
+String sql = "insert into t_dept (deptName) values(?)";
+        jdbcTemplate.update(sql,dept.getDeptName());
+    }
+}
+#+END_SRC
+
+**** LogDao.java
+#+BEGIN_SRC java
+package cn.atcast.c_anno;
+import javax.annotation.Resource;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
+/*    创建日志表
+       use hib_demo ;
+       create table log_(
+       content varchar(20)
+)
+ */
+// 测试： 日志传播行为
+@Repository
+public class LogDao {
+    @Resource
+    private JdbcTemplate jdbcTemplate;
+    // 始终开启事务
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void insertLog() {
+        jdbcTemplate.update("insert into log_ values('在保存Dept..')");
+    }
+}
+#+END_SRC
+
+**** DeptService.java
+#+BEGIN_SRC java
+package cn.atcast.c_anno;
+import javax.annotation.Resource;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
+/**
+ * Service
+ *
+ */
+@Service
+public class DeptService {
+    // 部门dao
+    @Resource
+    private DeptDao deptDao;
+    
+    // 日志dao
+    @Resource
+    private LogDao logDao;
+    /*
+     * 事务控制
+     */
+    @Transactional(
+            readOnly = false,  // 读写事务
+            timeout = -1,       // 事务的超时时间不限制(数据库有异常或没有连接上，等待的时间，但还是要看连接的数据库是如何设置的。)
+            //noRollbackFor = ArithmeticException.class,  // noRollbackFor设置遇到指定的错误不用回滚。此处是遇到数学异常不回滚
+            isolation = Isolation.DEFAULT,     // 事务的隔离级别，数据库的默认
+            propagation = Propagation.REQUIRED  // 事务的传播行为,此处是指当前的方法要在事务中去执行。
+    )
+    /*
+     * DeptService执行save()时会调用insertLog(), 当前saveDept()方法有事务，
+     * 而insertLog()方法的事务传播行为为required, insertLog()会加入saveDept()方法的事务，
+     * 它们用的是同一个事务。如果在insertLog()方法后有一个异常，日志不会插入，因为用的是同一个事务。
+     * 如果此时要求日志一定要插入，此时用required就不可以。
+     */
+    public void save(Dept dept){
+        logDao.insertLog();  // 保存日志  【自己开启一个事务】
+        deptDao.save(dept);  // 保存部门
+        //int i = 1/0;
+        deptDao.save(dept);  // 保存部门
+    }
+}
+#+END_SRC
+
+**** bean.xml
+#+BEGIN_SRC nxml
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+    xmlns:p="http://www.springframework.org/schema/p"
+    xmlns:context="http://www.springframework.org/schema/context"
+    xmlns:aop="http://www.springframework.org/schema/aop"
+    xmlns:tx="http://www.springframework.org/schema/tx"
+    xsi:schemaLocation="http://www.springframework.org/schema/beans
+         http://www.springframework.org/schema/beans/spring-beans.xsd
+         http://www.springframework.org/schema/context
+         http://www.springframework.org/schema/context/spring-context.xsd
+         http://www.springframework.org/schema/aop
+         http://www.springframework.org/schema/aop/spring-aop.xsd
+         http://www.springframework.org/schema/tx
+         http://www.springframework.org/schema/tx/spring-tx.xsd">
+    <!-- 1. 数据源对象: C3P0连接池 -->
+    <bean id="dataSource" class="com.mchange.v2.c3p0.ComboPooledDataSource">
+        <property name="driverClass" value="com.mysql.jdbc.Driver"></property>
+        <property name="jdbcUrl" value="jdbc:mysql:///hib_demo"></property>
+        <property name="user" value="root"></property>
+        <property name="password" value="root"></property>
+        <property name="initialPoolSize" value="3"></property>
+        <property name="maxPoolSize" value="10"></property>
+        <property name="maxStatements" value="100"></property>
+        <property name="acquireIncrement" value="2"></property>
+    </bean>
+    
+    <!-- 2. JdbcTemplate工具类实例 -->
+    <bean id="jdbcTemplate" class="org.springframework.jdbc.core.JdbcTemplate">
+        <property name="dataSource" ref="dataSource"></property>
+    </bean>
+    
+    <!-- 事务管理器类 -->
+    <bean id="txManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+        <property name="dataSource" ref="dataSource"></property>
+    </bean>
+    
+    <!-- 开启注解扫描 -->
+    <context:component-scan base-package="cn.atcast.c_anno"></context:component-scan>
+    
+    <!-- 注解方式实现事务： 指定注解方式实现事务 -->
+    <tx:annotation-driven transaction-manager="txManager"/>
+</beans>
+#+END_SRC
+
+**** App.java
+#+BEGIN_SRC java
+package cn.atcast.c_anno;
+import java.util.Arrays;
+import org.junit.Test;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.support.ClassPathXmlApplicationContext;
+public class App {
+    @Test
+    public void testApp() throws Exception {
+        //容器对象
+        ApplicationContext ac = new ClassPathXmlApplicationContext("cn/atcast/c_anno/bean.xml");
+        // 模拟数据
+        Dept dept = new Dept();
+        dept.setDeptName("测试： 开发部");
+        
+        DeptService deptService = (DeptService) ac.getBean("deptService");
+        deptService.save(dept);
+    }
+}
+#+END_SRC
+
+| PROPAGATION_REQUIRED     | 如果当前没有事务，就创建一个新事务，如果当前存在事务，就加入该事务，该设置是最常用的设置 |
+| PROPAGATION_SUPPORTS     | 支持当前事务，如果当前存在事务，就加入该事务，如果当前不存在事务，就以非事务执行。       |
+| PROPAGATION_MANDATORY    | 支持当前事务，如果当前存在事务，就加入该事务，如果当前不存在事务，就抛出异常。           |
+| PROPAGATION_REQUIRES_NEW | 创建新事务，无论当前存不存在事务，都创建新事务。                                         |
+
+** Spring与Hibernate整合
+*** Hibernate的SessionFactory对象交给Spring创建
+本小节源码见 =SpringHibernate01=
+**** Dept.java
+#+BEGIN_SRC java
+package cn.atcast.entity;
+public class Dept {
+    private int id;
+    private String name;
+    public int getId() {
+        return id;
+    }
+    public void setId(int id) {
+        this.id = id;
+    }
+    public String getName() {
+        return name;
+    }
+    public void setName(String name) {
+        this.name = name;
+    }
+}
+#+END_SRC
+
+**** Dept.hbm.xml
+#+BEGIN_SRC nxml
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE hibernate-mapping PUBLIC 
+    "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+    "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
+<hibernate-mapping package="cn.atcast.entity">
+    <class name="Dept" table="t_dept">
+        <id name="id" column="deptId">
+            <generator class="native"></generator>
+        </id>
+        <property name="name" column="deptName"></property>
+    </class>
+</hibernate-mapping>
+#+END_SRC
+
+**** DeptDao.java
+#+BEGIN_SRC java
+package cn.atcast.dao;
+import org.hibernate.SessionFactory;
+import cn.atcast.entity.Dept;
+// 数据访问层（将sessionFactory的创建给spring管理）
+public class DeptDao {
+    // Spring与Hibernate整合： IOC容器注入
+    private SessionFactory sessionFactory;
+    public void setSessionFactory(SessionFactory sessionFactory) {
+        this.sessionFactory = sessionFactory;
+    }
+    // 保存一个记录
+    // Spring与Hibernate整合：事务管理交给Spring
+    //要使用这个类来管理事务org.springframework.orm.hibernate3.HibernateTransactionManager
+    public void save(Dept dept) {
+        sessionFactory.getCurrentSession().save(dept);
+    }
+}
+#+END_SRC
+
+**** DeptService.java
+#+BEGIN_SRC java
+package cn.atcast.service;
+import cn.atcast.dao.DeptDao;
+import cn.atcast.entity.Dept;
+// 业务逻辑层
+public class DeptService {
+    private DeptDao deptDao;
+    public void setDeptDao(DeptDao deptDao) {
+        this.deptDao = deptDao;
+    }
+    public void save(Dept dept){
+        deptDao.save(dept);
+    }
+}
+#+END_SRC
+
+**** hibernate.cfg.xml
+#+BEGIN_SRC nxml
+<!DOCTYPE hibernate-configuration PUBLIC
+    "-//Hibernate/Hibernate Configuration DTD 3.0//EN"
+    "http://www.hibernate.org/dtd/hibernate-configuration-3.0.dtd">
+<hibernate-configuration>
+    <!-- 通常，一个session-factory节点代表一个数据库 -->
+    <session-factory>
+        <!-- 1. 数据库连接配置 -->
+        <property name="hibernate.connection.driver_class">com.mysql.jdbc.Driver</property>
+        <property name="hibernate.connection.url">jdbc:mysql:///hib_demo</property>
+        <property name="hibernate.connection.username">root</property>
+        <property name="hibernate.connection.password">root</property>
+        <!-- 
+            数据库方法配置， hibernate在运行的时候，会根据不同的方言生成符合当前数据库语法的sql
+         -->
+        <property name="hibernate.dialect">org.hibernate.dialect.MySQL5Dialect</property>
+    
+        <!-- 2. 其他相关配置 -->
+        <!-- 2.1 显示hibernate在运行时候执行的sql语句 -->
+        <property name="hibernate.show_sql">true</property>
+        <!-- 2.2 格式化sql
+<property name="hibernate.format_sql">true</property>  -->
+        <!-- 2.3 自动建表  -->
+        <property name="hibernate.hbm2ddl.auto">update</property>
+        <!-- 3. 加载所有映射 -->
+        <mapping resource="cn/atcast/entity/Dept.hbm.xml"/>
+    </session-factory>
+</hibernate-configuration>
+#+END_SRC
+
+**** bean.xml
+#+BEGIN_SRC nxml
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+    xmlns:p="http://www.springframework.org/schema/p"
+    xmlns:context="http://www.springframework.org/schema/context"
+    xmlns:aop="http://www.springframework.org/schema/aop"
+    xmlns:tx="http://www.springframework.org/schema/tx"
+    xsi:schemaLocation="http://www.springframework.org/schema/beans
+         http://www.springframework.org/schema/beans/spring-beans.xsd
+         http://www.springframework.org/schema/context
+         http://www.springframework.org/schema/context/spring-context.xsd
+         http://www.springframework.org/schema/aop
+         http://www.springframework.org/schema/aop/spring-aop.xsd
+         http://www.springframework.org/schema/tx
+         http://www.springframework.org/schema/tx/spring-tx.xsd">
+    
+    <!-- dao 实例 -->
+    <bean id="deptDao" class="cn.atcast.dao.DeptDao">
+        <property name="sessionFactory" ref="sessionFactory"></property>
+    </bean>
+    
+    <!-- service 实例 -->
+    <bean id="deptService" class="cn.atcast.service.DeptService">
+        <property name="deptDao" ref="deptDao"></property>
+    </bean>
+    
+    <!-- 方式（1）直接加载hibernate.cfg.xml文件的方式整合-->
+    <bean id="sessionFactory" class="org.springframework.orm.hibernate3.LocalSessionFactoryBean">
+        <property name="configLocation" value="classpath:hibernate.cfg.xml"></property>
+    </bean>    
+    
+    <!-- 事务配置 -->
+    <!-- a. 配置事务管理器类 -->
+    <bean id="txManager" class="org.springframework.orm.hibernate3.HibernateTransactionManager">
+        <property name="sessionFactory" ref="sessionFactory"></property>
+    </bean>
+    <!-- b. 配置事务增强(拦截到方法后如果管理事务) -->
+    <tx:advice id="txAdvice" transaction-manager="txManager">
+        <tx:attributes>
+            <tx:method name="*" read-only="false"/>
+        </tx:attributes>
+    </tx:advice>
+    <!-- c. Aop配置 -->
+    <aop:config>
+         <aop:pointcut expression="execution(* cn.atcast.service.*.*(..))" id="pt"/>
+         <aop:advisor advice-ref="txAdvice" pointcut-ref="pt"/>
+    </aop:config>
+    
+</beans>
+#+END_SRC
+
+**** App.java
+#+BEGIN_SRC java
+package junit.test;
+import org.junit.Test;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.support.ClassPathXmlApplicationContext;
+import cn.atcast.entity.Dept;
+import cn.atcast.service.DeptService;
+
+public class App {
+    // 容器
+    private ApplicationContext ac = new ClassPathXmlApplicationContext("bean.xml");
+
+    @Test
+    public void testApp() throws Exception {
+        DeptService deptServie = (DeptService) ac.getBean("deptService");
+        System.out.println(deptServie.getClass()); //输出class cn.itcast.service.DeptService ->spring ok
+        Dept dept=new Dept();
+        dept.setName("销售部");
+        deptServie.save(dept); //Hibernate: insert into t_dept (deptName) values (?)->hibernate ok
+    }
+}
+#+END_SRC
+
+*** Hibernate事务交给spring的声明式事务管理
+本小节源码见 =SpringHibernate02=
+**** Dept.java
+#+BEGIN_SRC java
+package cn.atcast.entity;
+public class Dept {
+    private int id;
+    private String name;
+    public int getId() {
+        return id;
+    }
+    public void setId(int id) {
+        this.id = id;
+    }
+    public String getName() {
+        return name;
+    }
+    public void setName(String name) {
+        this.name = name;
+    }
+}
+#+END_SRC
+
+**** Dept.hbm.xml
+#+BEGIN_SRC nxml
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE hibernate-mapping PUBLIC 
+    "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+    "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
+<hibernate-mapping package="cn.atcast.entity">
+    <class name="Dept" table="t_dept">
+        <id name="id" column="deptId">
+            <generator class="native"></generator>
+        </id>
+        <property name="name" column="deptName"></property>
+    </class>
+</hibernate-mapping>
+#+END_SRC
+
+**** DeptDao.java
+#+BEGIN_SRC java
+package cn.atcast.dao;
+import org.hibernate.SessionFactory;
+import org.hibernate.cfg.Configuration;
+import org.hibernate.classic.Session;
+import cn.atcast.entity.Dept;
+// 数据访问层
+public class DeptDao {
+    // Spring与Hibernate整合： IOC容器注入
+    private SessionFactory sessionFactory;
+    public void setSessionFactory(SessionFactory sessionFactory) {
+        this.sessionFactory = sessionFactory;
+    }
+
+    // 保存一个记录
+    // Spring与Hibernate整合：事务管理交给Spring
+    public void save(Dept dept) {
+        sessionFactory.getCurrentSession().save(dept);
+    }
+}
+#+END_SRC
+
+**** DeptService.java
+#+BEGIN_SRC java
+package cn.atcast.service;
+import cn.atcast.dao.DeptDao;
+import cn.atcast.entity.Dept;
+// 业务逻辑层
+public class DeptService {
+    private DeptDao deptDao;
+    public void setDeptDao(DeptDao deptDao) {
+        this.deptDao = deptDao;
+    }
+    
+    public void save(Dept dept){
+        deptDao.save(dept);
+    }
+}
+#+END_SRC
+
+**** bean.xml
+#+BEGIN_SRC nxml
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+    xmlns:p="http://www.springframework.org/schema/p"
+    xmlns:context="http://www.springframework.org/schema/context"
+    xmlns:aop="http://www.springframework.org/schema/aop"
+    xmlns:tx="http://www.springframework.org/schema/tx"
+    xsi:schemaLocation="http://www.springframework.org/schema/beans
+         http://www.springframework.org/schema/beans/spring-beans.xsd
+         http://www.springframework.org/schema/context
+         http://www.springframework.org/schema/context/spring-context.xsd
+         http://www.springframework.org/schema/aop
+         http://www.springframework.org/schema/aop/spring-aop.xsd
+         http://www.springframework.org/schema/tx
+         http://www.springframework.org/schema/tx/spring-tx.xsd">
+    
+    <!-- 数据源配置 -->
+    <bean id="dataSource" class="com.mchange.v2.c3p0.ComboPooledDataSource">
+        <property name="driverClass" value="com.mysql.jdbc.Driver"></property>
+        <property name="jdbcUrl" value="jdbc:mysql:///hib_demo"></property>
+        <property name="user" value="root"></property>
+        <property name="password" value="root"></property>
+        <property name="initialPoolSize" value="3"></property>
+        <property name="maxPoolSize" value="10"></property>
+        <property name="maxStatements" value="100"></property>
+        <property name="acquireIncrement" value="2"></property>
+    </bean>
+<!-- ###########Spring与Hibernate整合  start########### -->
+    <!-- 【推荐】方式（2）所有的配置全部都在Spring配置文件中完成 -->
+    <bean id="sessionFactory" class="org.springframework.orm.hibernate3.LocalSessionFactoryBean">
+        <!-- 注入连接池对象 -->
+        <property name="dataSource" ref="dataSource"></property>
+        
+        <!-- hibernate常用配置 -->
+        <property name="hibernateProperties">
+            <props>
+                <prop key="hibernate.dialect">org.hibernate.dialect.MySQLDialect</prop>
+                <prop key="hibernate.show_sql">true</prop>
+                <prop key="hibernate.hbm2ddl.auto">update</prop>
+            </props>
+        </property>
+        
+        <property name="mappingDirectoryLocations">
+            <list>
+                <value>classpath:cn/atcast/entity/</value>
+            </list>
+        </property>
+    </bean>
+    <!-- dao 实例 -->
+    <bean id="deptDao" class="cn.atcast.dao.DeptDao">
+        <property name="sessionFactory" ref="sessionFactory"></property>
+    </bean>
+    
+    <!-- service 实例 -->
+    <bean id="deptService" class="cn.atcast.service.DeptService">
+        <property name="deptDao" ref="deptDao"></property>
+    </bean>
+    
+    <!-- ###########Spring与Hibernate整合  end########### -->
+    <!-- 事务配置 -->
+    <!-- a. 配置事务管理器类 -->
+    <bean id="txManager" class="org.springframework.orm.hibernate3.HibernateTransactionManager">
+        <property name="sessionFactory" ref="sessionFactory"></property>
+    </bean>
+    <!-- b. 配置事务增强(拦截到方法后如果管理事务?) -->
+    <tx:advice id="txAdvice" transaction-manager="txManager">
+        <tx:attributes>
+            <tx:method name="*" read-only="false"/>
+        </tx:attributes>
+    </tx:advice>
+    <!-- c. Aop配置 -->
+    <aop:config>
+         <aop:pointcut expression="execution(* cn.atcast.service.*.*(..))" id="pt"/>
+         <aop:advisor advice-ref="txAdvice" pointcut-ref="pt"/>
+    </aop:config>
+</beans>     
+#+END_SRC
+
+**** App.java
+#+BEGIN_SRC java
+package junit.test;
+import org.junit.Test;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.support.ClassPathXmlApplicationContext;
+import cn.atcast.entity.Dept;
+import cn.atcast.service.DeptService;
+public class App {
+    // 容器
+    private ApplicationContext ac = new ClassPathXmlApplicationContext("bean.xml");
+    @Test
+    public void testApp() throws Exception {
+        DeptService deptServie = (DeptService) ac.getBean("deptService");
+        System.out.println(deptServie.getClass());
+        Dept dept=new Dept();
+        dept.setName("销售部2");
+        deptServie.save(dept); 
+    }
+}
+#+END_SRC

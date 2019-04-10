@@ -1,0 +1,1272 @@
+#+OPTIONS: ':nil *:t -:t ::t <:t H:5 \n:nil ^:{} arch:headline
+#+OPTIONS: author:t broken-links:nil c:nil creator:nil
+#+OPTIONS: d:(not "LOGBOOK") date:t e:t email:nil f:t inline:t num:t
+#+OPTIONS: p:nil pri:nil prop:nil stat:t tags:t tasks:t tex:t
+#+OPTIONS: timestamp:t title:t toc:t todo:t |:t
+#+TITLE: 三、Hibernate 联系人管理之知识点
+#+DATE: <2019-03-16 Sat>
+#+AUTHOR: Ynjxsjmh
+#+EMAIL: ynjxsjmh@gmail.com
+#+FILETAGS: ::
+
+* 学习内容
+1. 集合映射
+2. 一对多与多对一映射 (重点)
+3. 多对多映射
+4. 一对一映射
+5. inverse/cascade
+
+* 映射关系
+** 集合映射
+*** hibernate.cfg.xml
+#+BEGIN_SRC nxml
+  <!DOCTYPE hibernate-configuration PUBLIC
+    "-//Hibernate/Hibernate Configuration DTD 3.0//EN"
+    "http://www.hibernate.org/dtd/hibernate-configuration-3.0.dtd">
+
+<hibernate-configuration>
+    <!-- 通常，一个session-factory节点代表一个数据库 -->
+    <session-factory>
+        <!-- 1. 数据库连接配置 -->
+        <property name="hibernate.connection.driver_class">com.mysql.jdbc.Driver</property>
+        <property name="hibernate.connection.url">jdbc:mysql:///hib_demo?useUnicode=true&amp;characterEncoding=UTF-8</property>
+        <property name="hibernate.connection.username">root</property>
+        <property name="hibernate.connection.password">root</property>
+        <!-- 
+            数据库方法配置， hibernate在运行的时候，会根据不同的方言生成符合当前数据库语法的sql
+         -->
+        <property name="hibernate.dialect">org.hibernate.dialect.MySQL5Dialect</property>
+        
+        <!-- 2. 其他相关配置 -->
+        <!-- 2.1 显示hibernate在运行时候执行的sql语句 -->
+        <property name="hibernate.show_sql">true</property>
+        <!-- 2.2 格式化sql
+    <property name="hibernate.format_sql">true</property>  -->
+        <!-- 2.3 自动建表  -->
+        <property name="hibernate.hbm2ddl.auto">update</property>
+        
+        <!-- 3. 加载所有映射 
+        <mapping resource="cn/atcast/a_hello/Employee.hbm.xml"/>
+        -->
+    </session-factory>
+</hibernate-configuration>
+#+END_SRC
+
+*** User.java
+#+BEGIN_SRC java
+package cn.atcast.a_collection;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+// javabean设计
+public class User {
+    private int userId;
+    private String userName;
+    //分别对set,list,map进行测试
+    // 一个用户，对应的多个地址
+    private Set<String> address;
+    private List<String> addressList = new ArrayList<String>(); 
+    private Map<String,String> addressMap = new HashMap<String, String>();
+    
+    public Map<String, String> getAddressMap() {
+        return addressMap;
+    }
+    public void setAddressMap(Map<String, String> addressMap) {
+        this.addressMap = addressMap;
+    }
+    public List<String> getAddressList() {
+        return addressList;
+    }
+    public void setAddressList(List<String> addressList) {
+        this.addressList = addressList;
+    }
+    public int getUserId() {
+        return userId;
+    }
+    public void setUserId(int userId) {
+        this.userId = userId;
+    }
+    public String getUserName() {
+        return userName;
+    }
+    public void setUserName(String userName) {
+        this.userName = userName;
+    }
+    public Set<String> getAddress() {
+        return address;
+    }
+    public void setAddress(Set<String> address) {
+        this.address = address;
+    }
+}
+#+END_SRC
+
+*** User.hbm.xml
+#+BEGIN_SRC nxml
+<?xml version="1.0"?>
+<!DOCTYPE hibernate-mapping PUBLIC 
+    "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+    "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
+<hibernate-mapping package="cn.atcast.a_collection">
+    
+    <class name="User" table="t_user">
+        <id name="userId" column="id">
+            <generator class="native"></generator>
+        </id>   
+        <property name="userName"></property>
+        <!-- 
+            set集合属性的映射
+                name 指定要映射的set集合的属性
+                table 集合属性要映射到的表
+                key  指定集合表(t_address)的外键字段
+                element 指定集合表的其他字段
+                type 元素类型，一定要指定
+         -->
+         <set name="address" table="t_address">
+            <key column="uid"></key>
+            <element column="address" type="string"></element>
+         </set>
+         
+         <!-- 
+            list集合映射
+         list-index  指定的是排序列的名称 (因为要保证list集合的有序)
+          -->
+          <list name="addressList" table="t_addressList">
+              <key column="uid"></key>
+              <list-index column="idx"></list-index>
+              <element column="address" type="string"></element>
+          </list>
+          
+          <!-- 
+            map集合的映射
+                key  指定外键字段
+                map-key 指定map的key 
+                element  指定map的value
+           -->
+          <map name="addressMap" table="t_addressMap">
+            <key column="uid"></key>
+            <map-key column="shortName" type="string" ></map-key>
+            <element column="address" type="string" ></element>
+          </map>  
+    </class>
+</hibernate-mapping>
+#+END_SRC
+
+*** App.java
+#+BEGIN_SRC java
+package cn.atcast.a_collection;
+import java.util.HashSet;
+import java.util.Set;
+import org.hibernate.SessionFactory;
+import org.hibernate.cfg.Configuration;
+import org.hibernate.classic.Session;
+import org.junit.Test;
+
+public class App {
+    private static SessionFactory sf;
+    static {
+        sf = new Configuration()
+            .configure()
+            .addClass(User.class)   // 测试时候使用
+            .buildSessionFactory();
+    }
+
+    // 保存set
+    @Test
+    public void testSaveSet() throws Exception {
+        Session session = sf.openSession();
+        session.beginTransaction();
+        //保存
+        Set<String> addressSet = new HashSet<String>();
+        addressSet.add("广州");
+        addressSet.add("深圳");
+        // 用户对象
+        User user = new User();
+        user.setUserName("Jack");
+        user.setAddress(addressSet);
+        // 保存
+        session.save(user);
+        session.getTransaction().commit();
+        session.close();
+    }
+    
+    // 保存list
+    @Test
+    public void testSaveList() throws Exception {
+        Session session = sf.openSession();
+        session.beginTransaction();
+        User user = new User();
+        user.setUserName("Tom");
+        // 用户对象  --  list
+        user.getAddressList().add("广州");
+        user.getAddressList().add("深圳");
+        // 保存
+        session.save(user);
+        session.getTransaction().commit();
+        session.close();
+    }
+    // 保存map
+    @Test
+    public void testSaveMap() throws Exception {
+        Session session = sf.openSession();
+        session.beginTransaction();
+        User user = new User();
+        user.setUserName("Tom");
+        // 用户对象  --  Map
+        user.getAddressMap().put("A0001", "广州");
+        user.getAddressMap().put("A0002", "深圳");
+        // 保存
+        session.save(user);
+        session.getTransaction().commit();
+        session.close();
+    }
+    
+    // 获取
+    @Test
+    public void testGet() throws Exception {
+        Session session = sf.openSession();
+        session.beginTransaction();
+        
+        // 获取
+        User user = (User) session.get(User.class, 3); // 及时加载
+        System.out.println(user.getUserId());
+        System.out.println(user.getUserName());
+        
+// 当查询用户，同时可以获取用户关联的list集合的数据 (因为有正确映射)
+    // 当使用到集合数据的使用，才向数据库发送执行的sql语句  (懒加载)
+        System.out.println(user.getAddressList());
+        
+        session.getTransaction().commit();
+        session.close();
+    }
+}
+#+END_SRC
+** 关联映射
+*** 一对多和多对一
+部门与员工
+一个部门有多个员工; （一对多）
+多个员工，属于一个部门 （多对一）
+
+在一对多与多对一的关联关系中，保存数据最好 **通过多的一方来维护关系** ，这样可以减少update语句的生成，从而提高hibernate的执行效率！
+
+**** Dept.java
+#+BEGIN_SRC java
+package cn.atcast.b_one2Many;
+import java.util.HashSet;
+import java.util.Set;
+public class Dept {
+    private int deptId;
+    private String deptName;
+    // 【一对多】 部门对应的多个员工
+    private Set<Employee> emps = new HashSet<Employee>();
+    public int getDeptId() {
+        return deptId;
+    }
+    public void setDeptId(int deptId) {
+        this.deptId = deptId;
+    }
+    public String getDeptName() {
+        return deptName;
+    }
+    public void setDeptName(String deptName) {
+        this.deptName = deptName;
+    }
+    public Set<Employee> getEmps() {
+        return emps;
+    }
+    public void setEmps(Set<Employee> emps) {
+        this.emps = emps;
+    }
+}
+#+END_SRC
+
+**** Employee.java
+#+BEGIN_SRC java
+package cn.atcast.b_one2Many;
+public class Employee {
+    private int empId;
+    private String empName;
+    private double salary;
+    // 【多对一】员工与部门
+    private Dept dept;
+    public int getEmpId() {
+        return empId;
+    }
+    public void setEmpId(int empId) {
+        this.empId = empId;
+    }
+    public String getEmpName() {
+        return empName;
+    }
+    public void setEmpName(String empName) {
+        this.empName = empName;
+    }
+    public double getSalary() {
+        return salary;
+    }
+    public void setSalary(double salary) {
+        this.salary = salary;
+    }
+    public Dept getDept() {
+        return dept;
+    }
+    public void setDept(Dept dept) {
+        this.dept = dept;
+    }
+}
+#+END_SRC
+
+**** Dept.hbm.xml
+#+BEGIN_SRC nxml
+<?xml version="1.0"?>
+<!DOCTYPE hibernate-mapping PUBLIC 
+    "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+    "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
+<hibernate-mapping package="cn.atcast.b_one2Many">
+    <class name="Dept" table="t_dept">
+        <id name="deptId">
+            <generator class="native"></generator>
+        </id>   
+        <property name="deptName" length="20"></property>
+        <!-- 
+            一对多关联映射配置  （通过部门管理到员工）
+            Dept 映射关键点：
+            1.  指定 映射的集合属性： "emps"
+            2.  集合属性对应的集合表： "t_employee"
+            3.  集合表的外键字段   "t_employee. dept_id"
+            4.  集合元素的类型
+            
+            inverse=false  set集合映射的默认值； 表示有控制权
+         -->
+         <!-- 只能在一的一方设置。如果设置控制反转,即inverse=true, 员工方不会维护关联关系，
+         通过部门方维护关联关系。但在App1_save的save()方法中，先保存员工，后保存部门，此时员工没有部门的编号，员工表中部门值为null，
+         并且维护方为部门，员工方就不会再执行update语句，因为员工方是不需要维护的。而将inverser=false,则部门方不维护，将维护交给员工方，
+         所以员工方会执行update语句 -->
+         <set name="emps" cascade="save-update,delete" table="t_employee" inverse="true">   
+             <key column="dept_id"></key>
+             <one-to-many class="Employee"/>
+         </set>
+    </class>
+</hibernate-mapping>
+#+END_SRC
+
+**** Employee.hbm.xml
+#+BEGIN_SRC nxml
+<?xml version="1.0"?>
+<!DOCTYPE hibernate-mapping PUBLIC 
+    "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+    "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
+<hibernate-mapping package="cn.atcast.b_one2Many">
+    <class name="Employee" table="t_employee">
+        <id name="empId">
+            <generator class="native"></generator>
+        </id>   
+        <property name="empName" length="20"></property>
+        <property name="salary" type="double"></property>
+        <!-- 
+            多对一映射配置
+            Employee 映射关键点：
+            1.  映射的部门属性  ：  dept
+            2.  映射的部门属性，对应的外键字段: dept_id
+            3.  部门的类型
+         -->
+        <many-to-one name="dept" column="dept_id"  class="Dept" ></many-to-one>
+    </class>
+</hibernate-mapping>
+#+END_SRC
+
+**** 测试保存
+App1_save.java
+#+BEGIN_SRC java
+package cn.atcast.b_one2Many;
+import org.hibernate.SessionFactory;
+import org.hibernate.cfg.Configuration;
+import org.hibernate.classic.Session;
+import org.junit.Test;
+import cn.atcast.a_collection.User;
+public class App1_save {
+    private static SessionFactory sf;
+    static {
+        sf = new Configuration()
+            .configure()
+            .addClass(Dept.class)   
+            .addClass(Employee.class)   // 测试时候使用
+            .buildSessionFactory();
+    }
+    // 保存， 部门方 【一的一方法操作】
+    @Test
+    public void save() {
+        Session session = sf.openSession();
+        session.beginTransaction();
+        // 部门对象
+        Dept dept = new Dept();
+        dept.setDeptName("应用开发部");
+        // 员工对象
+        Employee emp_zs = new Employee();
+        emp_zs.setEmpName("张三");
+        Employee emp_ls = new Employee();
+        emp_ls.setEmpName("李四");
+        // 关系
+        dept.getEmps().add(emp_zs);
+        dept.getEmps().add(emp_ls);
+
+        // 保存
+        session.save(emp_zs);
+        session.save(emp_ls);
+        session.save(dept); // 保存部门，部门下所有的员工  
+        
+        session.getTransaction().commit();
+        session.close();
+        /*  在Dept.hbm.xml中设置inverse="true"
+         *  结果
+         *  Hibernate: insert into t_employee (empName, salary, dept_id) values (?, ?, ?)
+            Hibernate: insert into t_employee (empName, salary, dept_id) values (?, ?, ?)
+            Hibernate: insert into t_dept (deptName) values (?)
+            Hibernate: update t_employee set deptId=? where empId=?    维护员工引用的部门的id
+            Hibernate: update t_employee set deptId=? where empId=?
+         */
+    }
+    // 【推荐】 保存， 部门方 【多的一方法操作】
+    @Test
+    public void save2() {
+        Session session = sf.openSession();
+        session.beginTransaction();
+        
+        // 部门对象
+        Dept dept = new Dept();
+        dept.setDeptName("综合部");
+        // 员工对象
+        Employee emp_zs = new Employee();
+        emp_zs.setEmpName("张三");
+        Employee emp_ls = new Employee();
+        emp_ls.setEmpName("李四");
+        // 关系
+        emp_zs.setDept(dept);
+        emp_ls.setDept(dept);
+        // 保存
+        session.save(dept); // 先保存一的方法
+        session.save(emp_zs);
+session.save(emp_ls);// 再保存多的一方，关系回自动维护(映射配置完)
+        
+        session.getTransaction().commit();
+        session.close();
+        /*
+         *  结果
+         *  Hibernate: insert into t_dept (deptName) values (?)
+            Hibernate: insert into t_employee (empName, salary, dept_id) values (?, ?, ?)
+            Hibernate: insert into t_employee (empName, salary, dept_id) values (?, ?, ?)
+            少生成2条update  sql
+            也可以设置inverse="true"
+         */
+    }
+}
+#+END_SRC
+
+**** 测试获取
+App2_get.java
+#+BEGIN_SRC java
+package cn.atcast.b_one2Many;
+import org.hibernate.SessionFactory;
+import org.hibernate.cfg.Configuration;
+import org.hibernate.classic.Session;
+import org.junit.Test;
+import cn.atcast.a_collection.User;
+public class App2_get {
+    private static SessionFactory sf;
+    static {
+        sf = new Configuration()
+            .configure()
+            .addClass(Dept.class)   
+            .addClass(Employee.class)   // 测试时候使用
+            .buildSessionFactory();
+    }
+
+    @Test
+    public void get() {
+        Session session = sf.openSession();
+        session.beginTransaction();
+        // 通过部门方，获取另外一方
+        Dept dept = (Dept) session.get(Dept.class, 1);
+        System.out.println(dept.getDeptName());
+        System.out.println(dept.getEmps());// 懒加载
+        // 通过员工方，获取另外一方
+        Employee emp = (Employee) session.get(Employee.class, 1);
+        System.out.println(emp.getEmpName());
+        System.out.println(emp.getDept().getDeptName());
+        
+        session.getTransaction().commit();
+        session.close();
+    }
+}
+#+END_SRC
+
+**** 测试控制反转
+inverse属性，是在维护关联关系的时候起作用的。表示控制权是否转移。( **在一的一方起作用** )
+
+inverse = false  不反转；   当前方有控制权
+true  控制反转； 当前方没有控制权
+
+App3_inverse.java
+#+BEGIN_SRC java
+package cn.atcast.b_one2Many;
+import org.hibernate.SessionFactory;
+import org.hibernate.cfg.Configuration;
+import org.hibernate.classic.Session;
+import org.junit.Test;
+import cn.atcast.a_collection.User;
+
+public class App3_inverse {
+    
+    private static SessionFactory sf;
+    static {
+        sf = new Configuration()
+            .configure()
+            .addClass(Dept.class)   
+            .addClass(Employee.class)   // 测试时候使用
+            .buildSessionFactory();
+    }
+    // 1. 保存数据 
+    @Test
+    public void save() {
+        Session session = sf.openSession();
+        session.beginTransaction();
+        // 部门对象
+        Dept dept = new Dept();
+        dept.setDeptName("应用开发部");
+        // 员工对象
+        Employee emp_zs = new Employee();
+        emp_zs.setEmpName("张三");
+        Employee emp_ls = new Employee();
+        emp_ls.setEmpName("李四");
+        
+        //关系
+//如果此时设置inverse=true, 员工方不会维护关联关系，通过部门方维护。
+        dept.getEmps().add(emp_zs);
+        dept.getEmps().add(emp_ls);  
+        
+        // 保存
+        session.save(emp_zs);
+        session.save(emp_ls);
+        session.save(dept); // 保存部门，部门下所有的员工  
+        
+        session.getTransaction().commit();
+        session.close();
+    }
+    
+    //2. 是否设置inverse，对获取数据的影响？   无.
+    @Test
+    public void get() {
+        Session session = sf.openSession();
+        session.beginTransaction();
+        
+        Dept dept = (Dept) session.get(Dept.class, 1);
+        System.out.println(dept.getDeptName());
+        System.out.println(dept.getEmps());
+        
+        session.getTransaction().commit();
+        session.close();
+    }
+    
+    //3. 是否设置inverse属性，在删除数据中对关联关系的影响?
+    // inverse=false, 有控制权， 可以删除。先清空外键引用，再删除数据。
+    // inverse=true,  没有控制权: 如果删除的记录有被外键引用，会报错，违反主外键引用约束！
+    //如果删除的记录没有被引用，可以直接删除。
+    @Test
+    public void deleteData() {
+        Session session = sf.openSession();
+        session.beginTransaction();
+        
+        // 查询部门
+        //inverse=true,  没有控制权: 如果删除的记录有被外键引用，会报错，违反主外键引用约束！  但可以设置cascade="delete"
+        Dept dept = (Dept) session.get(Dept.class, 5);
+        session.delete(dept);
+        
+        session.getTransaction().commit();
+        session.close();
+    }
+}
+#+END_SRC
+
+**** 测试级联操作
+cascade  表示级联操作  (可以设置到一的一方或多的一方)
+| none               | 不级联操作， 默认值        |
+| save-update        | 级联保存或更新             |
+| delete             | 级联删除                   |
+| save-update-delete | 级联保存、更新、删除       |
+| all                | 同上。级联保存、更新、删除 |
+
+App4_cascade.java
+#+BEGIN_SRC java
+package cn.atcast.b_one2Many;
+import org.hibernate.SessionFactory;
+import org.hibernate.cfg.Configuration;
+import org.hibernate.classic.Session;
+import org.junit.Test;
+import cn.atcast.a_collection.User;
+
+public class App4_cascade {
+    
+    private static SessionFactory sf;
+    static {
+        sf = new Configuration()
+            .configure()
+            .addClass(Dept.class)   
+            .addClass(Employee.class)   // 测试时候使用
+            .buildSessionFactory();
+    }
+    // 级联保存
+    @Test
+    public void save() {
+        Session session = sf.openSession();
+        session.beginTransaction();
+        // 部门对象
+        Dept dept = new Dept();
+        dept.setDeptName("财务部");
+        // 员工对象
+        Employee emp_zs = new Employee();
+        emp_zs.setEmpName("张三");
+        Employee emp_ls = new Employee();
+        emp_ls.setEmpName("李四");
+        // 关系
+        dept.getEmps().add(emp_zs);
+        dept.getEmps().add(emp_ls);  
+        
+        // 保存
+//      session.save(emp_zs);
+//      session.save(emp_ls);
+        session.save(dept); // 需要设置级联保存； 保存部门，部门下所有的员工  
+        session.getTransaction().commit();
+        session.close();
+    }
+
+    // 级联删除
+    @Test
+    public void delete() {
+        Session session = sf.openSession();
+        session.beginTransaction();
+        
+        Dept dept = (Dept) session.get(Dept.class,7);
+        session.delete(dept); // 级联删除
+        
+        session.getTransaction().commit();
+        session.close();
+    }
+}
+#+END_SRC
+
+*** 多对多
+项目与开发人员（多对多）
+一个项目，有多个开发人员！
+一个开发人员，参与多个项目！
+
+**** Project.java
+#+BEGIN_SRC java
+package cn.atcast.c_many2many;
+import java.util.HashSet;
+import java.util.Set;
+/**
+ * 项目
+*/
+public class Project {
+    private int prj_id;
+    private String prj_name;
+    // 项目下的多个员工
+    private Set<Developer> developers = new HashSet<Developer>();
+    
+    public int getPrj_id() {
+        return prj_id;
+    }
+    public void setPrj_id(int prjId) {
+        prj_id = prjId;
+    }
+    public String getPrj_name() {
+        return prj_name;
+    }
+    public void setPrj_name(String prjName) {
+        prj_name = prjName;
+    }
+    public Set<Developer> getDevelopers() {
+        return developers;
+    }
+    public void setDevelopers(Set<Developer> developers) {
+        this.developers = developers;
+    }
+}
+#+END_SRC
+
+**** Developer.java
+#+BEGIN_SRC java
+package cn.atcast.c_many2many;
+import java.util.HashSet;
+import java.util.Set;
+/**
+ * 开发人员
+ */
+public class Developer {
+    private int d_id;
+    private String d_name;
+    // 开发人员，参与的多个项目
+    private Set<Project> projects = new HashSet<Project>();
+
+    public int getD_id() {
+        return d_id;
+    }
+    public void setD_id(int dId) {
+        d_id = dId;
+    }
+    public String getD_name() {
+        return d_name;
+    }
+    public void setD_name(String dName) {
+        d_name = dName;
+    }
+    public Set<Project> getProjects() {
+        return projects;
+    }
+    public void setProjects(Set<Project> projects) {
+        this.projects = projects;
+    }
+}
+#+END_SRC
+
+**** Project.hbm.xml
+#+BEGIN_SRC nxml
+<?xml version="1.0"?>
+<!DOCTYPE hibernate-mapping PUBLIC 
+    "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+    "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
+<hibernate-mapping package="cn.atcast.c_many2many">
+    <class name="Project" table="t_project">
+        <id name="prj_id">
+            <generator class="native"></generator>
+        </id>   
+        <property name="prj_name" length="20"></property>
+        <!-- 
+            多对多映射:
+            1.  映射的集合属性： “developers”
+            2.  集合属性，对应的中间表： “t_relation”
+            3.  外键字段:  prjId
+            4.  外键字段，对应的中间表字段:  did
+            5.  集合属性元素的类型
+            cascade="save-update" inverse="true"
+         -->
+         <set name="developers" table="t_relation" cascade="save-update" inverse="false">
+            <key column="prjId"></key>
+            <many-to-many column="did" class="Developer"></many-to-many>
+         </set>
+    </class>
+</hibernate-mapping>
+#+END_SRC
+
+**** Developer.hbm.xml
+#+BEGIN_SRC nxml
+<?xml version="1.0"?>
+<!DOCTYPE hibernate-mapping PUBLIC 
+    "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+    "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
+<hibernate-mapping package="cn.atcast.c_many2many">
+    
+    <class name="Developer" table="t_developer">
+        <id name="d_id">
+            <generator class="native"></generator>
+        </id>   
+        <property name="d_name" length="20"></property>
+        <!-- 
+            多对多映射配置： 员工方
+                name  指定映射的集合属性
+                table 集合属性对应的中间表
+    key  指定中间表的外键字段(引用当前表t_developer主键的外键字段)
+                many-to-many
+                    column 指定外键字段对应的项目字段
+                    class  集合元素的类型
+         -->
+        <set name="projects" table="t_relation">
+            <key column="did"></key>
+            <many-to-many column="prjId" class="Project"></many-to-many>
+        </set>
+    </class>
+</hibernate-mapping>
+#+END_SRC
+
+**** 测试保存
+App1_save.java
+#+BEGIN_SRC java
+package cn.atcast.c_many2many;
+
+import org.hibernate.SessionFactory;
+import org.hibernate.cfg.Configuration;
+import org.hibernate.classic.Session;
+import org.junit.Test;
+import cn.atcast.a_collection.User;
+
+public class App1_save {
+    private static SessionFactory sf;
+    static {
+        sf = new Configuration()
+            .configure()
+            .addClass(Project.class)   
+            .addClass(Developer.class)   // 测试时候使用
+            .buildSessionFactory();
+    }
+    // 1. 多对多，保存  【只能通过一方维护另外一方，不能重复维护！】
+    @Test
+    public void save() {
+        Session session = sf.openSession();
+        session.beginTransaction();
+        /*
+         * 模拟数据： 
+            电商系统（曹吉，王春）
+            OA系统（王春，老张）
+         */
+        // 创建项目对象
+        Project prj_ds = new Project();
+        prj_ds.setPrj_name("电商系统");
+        Project prj_oa = new Project();
+        prj_oa.setPrj_name("OA系统");
+        
+        // 创建员工对象
+        Developer dev_cj = new Developer();
+        dev_cj.setD_name("曹吉");
+        Developer dev_wc = new Developer();
+        dev_wc.setD_name("王春");
+        Developer dev_lz = new Developer();
+        dev_lz.setD_name("老张");
+        
+        // 关系 【项目方】通过项目维护员工
+        prj_ds.getDevelopers().add(dev_cj);
+        prj_ds.getDevelopers().add(dev_wc); // 电商系统（曹吉，王春）
+        prj_oa.getDevelopers().add(dev_wc);
+        prj_oa.getDevelopers().add(dev_lz); // OA系统（王春，老张）
+        
+        //通过员工维护项目，不能重复维护！因为通过项目维护员工时会在中间表中插入一条记录，而再通过员工去维护项目，相当于在中间表中又插入一条记录。
+        //dev_cj.getProjects().add(prj_ds);
+        //方法一：直接保存员工和项目
+        /*
+        // 保存
+        session.save(dev_cj);
+        session.save(dev_wc);
+        session.save(dev_lz);
+    
+        session.save(prj_ds);
+        session.save(prj_oa);   // 必须要设置级联保存 
+        */
+        
+        //方法二：使用级联操作
+        session.save(prj_ds);
+        session.save(prj_oa);  
+        
+        session.getTransaction().commit();
+        session.close();
+    }
+}
+#+END_SRC
+
+**** 测试控制反转
+App2_inverse.java
+#+BEGIN_SRC java
+package cn.atcast.c_many2many;
+import org.hibernate.SessionFactory;
+import org.hibernate.cfg.Configuration;
+import org.hibernate.classic.Session;
+import org.junit.Test;
+import cn.atcast.a_collection.User;
+
+public class App2_inverse {
+    private static SessionFactory sf;
+    static {
+        sf = new Configuration()
+            .configure()
+            .addClass(Project.class)   
+            .addClass(Developer.class)   // 测试时候使用
+            .buildSessionFactory();
+    }
+    // 多对多
+    //1. 设置inverse属性，对保存数据影响?
+    // 有影响。
+    // inverse=false ，有控制权，可以维护关联关系； 保存数据的时候会把对象关系插入中间表；
+    // inverse=true,  没有控制权， 不会往中间表插入数据。
+    @Test
+    public void save() {
+        Session session = sf.openSession();
+        session.beginTransaction();
+        
+        /*
+         * 模拟数据： 
+            电商系统（曹吉，王春）
+            OA系统（王春，老张）
+         */
+        // 创建项目对象
+        Project prj_ds = new Project();
+        prj_ds.setPrj_name("电商系统");
+        Project prj_oa = new Project();
+        prj_oa.setPrj_name("OA系统");
+        
+        // 创建员工对象
+        Developer dev_cj = new Developer();
+        dev_cj.setD_name("曹吉");
+        Developer dev_wc = new Developer();
+        dev_wc.setD_name("王春");
+        Developer dev_lz = new Developer();
+        dev_lz.setD_name("老张");
+        // 关系 【项目方】
+        prj_ds.getDevelopers().add(dev_cj);
+        prj_ds.getDevelopers().add(dev_wc); // 电商系统（曹吉，王春）
+        prj_oa.getDevelopers().add(dev_wc);
+        prj_oa.getDevelopers().add(dev_lz); // OA系统（王春，老张）
+        
+        // 保存
+//      session.save(dev_cj);
+//      session.save(dev_wc);
+//      session.save(dev_lz);
+        
+        session.save(prj_ds);
+        session.save(prj_oa);   // 必须要设置级联保存 
+        
+        session.getTransaction().commit();
+        session.close();
+    }
+    
+    //2 .设置inverse属性， 对获取数据影响？  无
+    @Test
+    public void get() {
+        Session session = sf.openSession();
+        session.beginTransaction();
+        
+        Project prj = (Project) session.get(Project.class, 1);
+        System.out.println(prj.getPrj_name());
+        System.out.println(prj.getDevelopers());
+        
+        session.getTransaction().commit();
+        session.close();
+    }
+    //3. 设置inverse属性，对删除数据的影响?
+    // inverse=false, 有控制权。 先删除中间表数据，再删除自身。
+    // inverse=true, 没有控制权。 如果删除的数据有被引用，会报错！ 否则，才可以删除
+    @Test
+    public void deleteData() {
+        Session session = sf.openSession();
+        session.beginTransaction();
+        
+        Project prj = (Project) session.get(Project.class, 1);
+        session.delete(prj);
+        
+        session.getTransaction().commit();
+        session.close();
+    }
+}
+#+END_SRC
+*** 一对一
+需求: 用户与身份证信息
+一条用户记录对应一条身份证信息(一对一的关系)
+**** 基于外键的映射
+***** User.java
+#+BEGIN_SRC java
+package cn.atcast.d_one2oneForeign;
+// 用户
+public class User {
+    private int userId;
+    private String userName;
+    // 用户与身份证信息， 一对一关系
+    private IdCard idCard;
+    public IdCard getIdCard() {
+        return idCard;
+    }
+    public void setIdCard(IdCard idCard) {
+        this.idCard = idCard;
+    }
+    public int getUserId() {
+        return userId;
+    }
+    public void setUserId(int userId) {
+        this.userId = userId;
+    }
+    public String getUserName() {
+        return userName;
+    }
+    public void setUserName(String userName) {
+        this.userName = userName;
+    }
+}
+#+END_SRC
+
+***** IdCard.java
+#+BEGIN_SRC java
+package cn.atcast.d_one2oneForeign;
+// 身份证
+public class IdCard {
+    // 身份证号(主键)
+    private String cardNum;// 对象唯一表示(Object Identified, OID)
+    private String place; //  身份证地址
+    // 身份证与用户，一对一的关系
+    private User user;
+    
+    public String getCardNum() {
+        return cardNum;
+    }
+    public void setCardNum(String cardNum) {
+        this.cardNum = cardNum;
+    }
+    public String getPlace() {
+        return place;
+    }
+    public void setPlace(String place) {
+        this.place = place;
+    }
+    public User getUser() {
+        return user;
+    }
+    public void setUser(User user) {
+        this.user = user;
+    }
+}
+#+END_SRC
+
+***** User.hbm.xml
+#+BEGIN_SRC nxml
+<?xml version="1.0"?>
+<!DOCTYPE hibernate-mapping PUBLIC 
+    "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+    "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
+<hibernate-mapping package="cn.atcast.d_one2oneForeign">
+    <class name="User" table="t_user">
+        <id name="userId">
+            <generator class="native"></generator>
+        </id>   
+        <property name="userName" length="20"></property>
+        <!-- 
+            一对一映射： 没有外键方
+         -->
+         <one-to-one name="idCard" class="IdCard"></one-to-one>
+    </class>
+</hibernate-mapping>
+#+END_SRC
+
+***** IdCard.hbm.xml
+#+BEGIN_SRC nxml
+<?xml version="1.0"?>
+<!DOCTYPE hibernate-mapping PUBLIC 
+    "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+    "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
+
+<hibernate-mapping package="cn.atcast.d_one2oneForeign">
+    <class name="IdCard" table="t_IdCard">
+        <id name="cardNum">
+            <generator class="assigned"></generator>
+        </id>   
+        <property name="place" length="20"></property>
+        <!-- 
+            一对一映射，有外键方
+            unique="true"   给外键字段添加唯一约束
+         -->
+         <many-to-one name="user" unique="true" column="user_id" class="User" cascade="save-update"></many-to-one>  
+    </class>
+</hibernate-mapping>
+#+END_SRC
+
+***** App.java
+#+BEGIN_SRC java
+package cn.atcast.d_one2oneForeign;
+import org.hibernate.SessionFactory;
+import org.hibernate.cfg.Configuration;
+import org.hibernate.classic.Session;
+import org.junit.Test;
+public class App {
+    private static SessionFactory sf;
+    static {
+        sf = new Configuration()
+            .configure()
+            .addClass(IdCard.class)   
+            .addClass(User.class)   // 测试时候使用
+            .buildSessionFactory();
+    }
+    @Test
+    public void getSave() {
+        Session session = sf.openSession();
+        session.beginTransaction();
+        
+        // 用户
+        User user = new User();
+        user.setUserName("Jack");
+        // 身份证
+        IdCard idCard = new IdCard();
+        idCard.setCardNum("441202XXX");
+        idCard.setPlace("广州XXX");
+        // 关系
+        idCard.setUser(user);
+        
+        // ----保存----
+        session.save(idCard);
+
+        session.getTransaction().commit();
+        session.close();
+    }
+}
+#+END_SRC
+**** 基于主键的映射
+***** User.java
+#+BEGIN_SRC java
+package cn.atcast.d_one2onePrimary;
+// 用户
+public class User {
+    private int userId;
+    private String userName;
+    // 用户与身份证信息， 一对一关系
+    private IdCard idCard;
+    
+    public IdCard getIdCard() {
+        return idCard;
+    }
+    public void setIdCard(IdCard idCard) {
+        this.idCard = idCard;
+    }
+    public int getUserId() {
+        return userId;
+    }
+    public void setUserId(int userId) {
+        this.userId = userId;
+    }
+    public String getUserName() {
+        return userName;
+    }
+    public void setUserName(String userName) {
+        this.userName = userName;
+    }
+}
+#+END_SRC
+
+***** IdCard.java
+#+BEGIN_SRC java
+package cn.atcast.d_one2onePrimary;
+// 身份证
+public class IdCard {
+    private int user_id;
+    // 身份证号
+    private String cardNum;
+    private String place; //  身份证地址
+    // 身份证与用户，一对一的关系
+    private User user;
+    
+    public int getUser_id() {
+        return user_id;
+    }
+    public void setUser_id(int userId) {
+        user_id = userId;
+    }
+    public String getCardNum() {
+        return cardNum;
+    }
+    public void setCardNum(String cardNum) {
+        this.cardNum = cardNum;
+    }
+    public String getPlace() {
+        return place;
+    }
+    public void setPlace(String place) {
+        this.place = place;
+    }
+    public User getUser() {
+        return user;
+    }
+    public void setUser(User user) {
+        this.user = user;
+    }
+}
+#+END_SRC
+
+***** User.hbm.xml
+#+BEGIN_SRC nxml
+<?xml version="1.0"?>
+<!DOCTYPE hibernate-mapping PUBLIC 
+    "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+    "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
+<hibernate-mapping package="cn.atcast.d_one2onePrimary">
+    <class name="User" table="t_user">
+        <id name="userId">
+            <generator class="native"></generator>
+        </id>   
+        <property name="userName" length="20"></property>
+        <!-- 
+            一对一映射： 没有外键方
+         -->
+         <one-to-one name="idCard" class="IdCard"></one-to-one>
+    </class>
+</hibernate-mapping>
+#+END_SRC
+
+***** IdCard.hbm.xml
+#+BEGIN_SRC nxml
+<?xml version="1.0"?>
+<!DOCTYPE hibernate-mapping PUBLIC 
+    "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+    "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
+<hibernate-mapping package="cn.atcast.d_one2onePrimary">
+    <class name="IdCard" table="t_IdCard">
+        <id name="user_id">
+            <!-- 
+                id 节点指定的是主键映射, 即user_id是主键
+        主键生成方式： foreign  即把别的表的主键作为当前表的主键；
+                        property (关键字不能修改)指定引用的对象     对象的全名 cn..User、  对象映射 cn.User.hbm.xml、   table(id)
+             -->
+            <generator class="foreign">
+                <param name="property">user</param>
+            </generator>
+        </id>   
+        <property name="cardNum" length="20"></property>
+        <property name="place" length="20"></property>
+        <!-- 
+            一对一映射，有外键方
+            （基于主键的映射）
+             constrained="true"  指定在主键上添加外键约束
+         -->
+        <one-to-one name="user" class="User" constrained="true"  cascade="save-update"></one-to-one>    
+    </class>
+</hibernate-mapping>
+#+END_SRC
+
+***** App.java
+#+BEGIN_SRC java
+package cn.atcast.d_one2onePrimary;
+import org.hibernate.SessionFactory;
+import org.hibernate.cfg.Configuration;
+import org.hibernate.classic.Session;
+import org.junit.Test;
+public class App {
+    private static SessionFactory sf;
+    static {
+        sf = new Configuration()
+            .configure()
+            .addClass(IdCard.class)   
+            .addClass(User.class)   // 测试时候使用
+            .buildSessionFactory();
+    }
+
+    @Test
+    public void getSave() {
+        
+        Session session = sf.openSession();
+        session.beginTransaction();
+        
+        // 用户
+        User user = new User();
+        user.setUserName("Jack");
+        // 身份证
+        IdCard idCard = new IdCard();
+        idCard.setCardNum("441202XXX");
+        idCard.setPlace("广州XXX");
+        // 关系
+        idCard.setUser(user);
+        
+        // ----保存----
+        session.save(idCard);
+        
+        session.getTransaction().commit();
+        session.close();
+    }
+}
+#+END_SRC
+
+本章源码见 =HibernateDemo01=

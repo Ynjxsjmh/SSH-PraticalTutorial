@@ -1,0 +1,780 @@
+#+OPTIONS: ':nil *:t -:t ::t <:t H:5 \n:nil ^:{} arch:headline
+#+OPTIONS: author:t broken-links:nil c:nil creator:nil
+#+OPTIONS: d:(not "LOGBOOK") date:t e:t email:nil f:t inline:t num:t
+#+OPTIONS: p:nil pri:nil prop:nil stat:t tags:t tasks:t tex:t
+#+OPTIONS: timestamp:t title:t toc:t todo:t |:t
+#+TITLE: 九、Struts2 客户管理之项目实现
+#+DATE: <2019-03-19 Tue>
+#+AUTHOR: Ynjxsjmh
+#+EMAIL: ynjxsjmh@gmail.com
+#+FILETAGS: ::
+
+* 需求
+实现新增用户，页面如下：
+
+https://raw.githubusercontent.com/Ynjxsjmh/ynjxsjmh.github.io/master/img/2019/2019-03-19-03-01.png
+
+https://raw.githubusercontent.com/Ynjxsjmh/ynjxsjmh.github.io/master/img/2019/2019-03-19-03-02.png
+
+* 项目实现
+
+https://raw.githubusercontent.com/Ynjxsjmh/ynjxsjmh.github.io/master/img/2019/2019-03-19-03-03.png
+
+** 创建客户表
+cst_customer
+#+BEGIN_SRC sql
+CREATE TABLE `cst_customer` (
+  `cust_id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `cust_name` varchar(255) DEFAULT NULL,
+  `cust_user_id` bigint(20) DEFAULT NULL,
+  `cust_create_id` bigint(20) DEFAULT NULL,
+  `cust_source` varchar(255) DEFAULT NULL,
+  `cust_industry` varchar(255) DEFAULT NULL,
+  `cust_level` varchar(255) DEFAULT NULL,
+  `cust_linkman` varchar(255) DEFAULT NULL,
+  `cust_phone` varchar(255) DEFAULT NULL,
+  `cust_mobile` varchar(255) DEFAULT NULL,
+  PRIMARY KEY (`cust_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=19 DEFAULT CHARSET=utf8;
+#+END_SRC
+
+** Hibernate配置文件
+hibernate.cfg.xml
+#+BEGIN_SRC nxml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE hibernate-configuration PUBLIC
+    "-//Hibernate/Hibernate Configuration DTD 3.0//EN"
+    "http://www.hibernate.org/dtd/hibernate-configuration-3.0.dtd">
+<hibernate-configuration>
+    <!-- 记住：先配置SessionFactory标签，一个数据库对应一个SessionFactory标签 -->
+    <session-factory>
+        <!-- 必须要配置的参数有5个，4大参数，数据库的方言 -->
+        <property name="hibernate.connection.driver_class">com.mysql.jdbc.Driver</property>
+        <property name="hibernate.connection.url">jdbc:mysql:///strutscrm</property>
+        <property name="hibernate.connection.username">root</property>
+        <property name="hibernate.connection.password">root</property>
+        
+        <!-- 数据库的方言 -->
+        <property name="hibernate.dialect">org.hibernate.dialect.MySQLDialect</property>
+        
+        <!-- 可选配置 -->
+        <!-- 显示SQL语句，在控制台显示 -->
+        <property name="hibernate.show_sql">true</property>
+        <!-- 格式化SQL语句 -->
+        <property name="hibernate.format_sql">true</property>
+        <!-- 生成数据库的表结构 
+            update：如果没有表结构，创建表结构。如果存在，不会创建，添加数据
+        -->
+        <property name="hibernate.hbm2ddl.auto">update</property>
+        <!-- 开启绑定本地的session -->
+        <property name="hibernate.current_session_context_class">thread</property>
+    
+        <!-- 映射配置文件，需要引入映射的配置文件 -->
+        <mapping resource="com/atcast/domain/User.hbm.xml"/>
+        <mapping resource="com/atcast/domain/Customer.hbm.xml"/>
+    </session-factory>
+</hibernate-configuration>
+#+END_SRC
+
+** Hibernate工具类
+HibernateUtils.java
+#+BEGIN_SRC java
+package com.atcast.utils;
+
+import org.hibernate.Session;
+import org.hibernate.SessionFactory;
+import org.hibernate.cfg.Configuration;
+/**
+ * Hibernate框架的工具类
+ * @author Administrator
+ */
+public class HibernateUtils {
+    // ctrl + shift + x
+    private static final Configuration CONFIG;
+    private static final SessionFactory FACTORY;
+    // 编写静态代码块
+    static{
+        // 加载XML的配置文件
+        CONFIG = new Configuration().configure();
+        // 构造工厂
+        FACTORY = CONFIG.buildSessionFactory();
+    }
+    /**
+     * 从工厂中获取Session对象
+     * @return
+     */
+    public static Session getSession(){
+        return FACTORY.openSession();
+    }
+    /**
+     * // 从ThreadLocal类中获取到session的对象
+     * @return
+     */
+    public static Session getCurrentSession(){
+        return FACTORY.getCurrentSession();
+    }
+    public static void main(String[] args) {
+        // 调用获取session的方法
+        getSession();
+    }
+}
+#+END_SRC
+
+** 客户实体对象及映射文件
+Customer.java
+#+BEGIN_SRC java
+package com.atcast.domain;
+/**
+ * 客户的JavaBean
+ * @author Administrator
+ */
+public class Customer {
+    private Long cust_id;
+    private String cust_name;
+    private Long cust_user_id;
+    private Long cust_create_id;
+    private String cust_source;
+    private String cust_industry;
+    private String cust_level;
+    private String cust_linkman;
+    private String cust_phone;
+    private String cust_mobile;
+    
+    public Long getCust_id() {
+        return cust_id;
+    }
+    public void setCust_id(Long cust_id) {
+        this.cust_id = cust_id;
+    }
+    public String getCust_name() {
+        return cust_name;
+    }
+    public void setCust_name(String cust_name) {
+        this.cust_name = cust_name;
+    }
+    public Long getCust_user_id() {
+        return cust_user_id;
+    }
+    public void setCust_user_id(Long cust_user_id) {
+        this.cust_user_id = cust_user_id;
+    }
+    public Long getCust_create_id() {
+        return cust_create_id;
+    }
+    public void setCust_create_id(Long cust_create_id) {
+        this.cust_create_id = cust_create_id;
+    }
+    public String getCust_source() {
+        return cust_source;
+    }
+    public void setCust_source(String cust_source) {
+        this.cust_source = cust_source;
+    }
+    public String getCust_industry() {
+        return cust_industry;
+    }
+    public void setCust_industry(String cust_industry) {
+        this.cust_industry = cust_industry;
+    }
+    public String getCust_level() {
+        return cust_level;
+    }
+    public void setCust_level(String cust_level) {
+        this.cust_level = cust_level;
+    }
+    public String getCust_linkman() {
+        return cust_linkman;
+    }
+    public void setCust_linkman(String cust_linkman) {
+        this.cust_linkman = cust_linkman;
+    }
+    public String getCust_phone() {
+        return cust_phone;
+    }
+    public void setCust_phone(String cust_phone) {
+        this.cust_phone = cust_phone;
+    }
+    public String getCust_mobile() {
+        return cust_mobile;
+    }
+    public void setCust_mobile(String cust_mobile) {
+        this.cust_mobile = cust_mobile;
+    }
+    @Override
+    public String toString() {
+        return "Customer [cust_id=" + cust_id + ", cust_name=" + cust_name + ", cust_user_id=" + cust_user_id
+                + ", cust_create_id=" + cust_create_id + ", cust_source=" + cust_source + ", cust_industry="
+                + cust_industry + ", cust_level=" + cust_level + ", cust_linkman=" + cust_linkman + ", cust_phone="
+                + cust_phone + ", cust_mobile=" + cust_mobile + "]";
+    }
+}
+#+END_SRC
+
+Customer.hbm.xml
+#+BEGIN_SRC nxml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE hibernate-mapping PUBLIC 
+    "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+  "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
+<hibernate-mapping>
+    <class name="com.atcast.domain.Customer" table="cst_customer">
+        <id name="cust_id" column="cust_id">
+            <generator class="native"/>
+        </id>
+        
+        <property name="cust_name" column="cust_name"/>
+        <property name="cust_user_id" column="cust_user_id"/>
+        <property name="cust_create_id" column="cust_create_id"/>
+        <property name="cust_source" column="cust_source"/>
+        <property name="cust_industry" column="cust_industry"/>
+        <property name="cust_level" column="cust_level"/>
+        <property name="cust_linkman" column="cust_linkman"/>
+        <property name="cust_phone" column="cust_phone"/>
+        <property name="cust_mobile" column="cust_mobile"/  
+    </class>
+</hibernate-mapping>
+#+END_SRC
+
+** 客户的DAO层
+CustomerDao.java
+#+BEGIN_SRC java
+package com.atcast.dao;
+import java.util.List;
+import org.hibernate.Session;
+import com.atcast.domain.Customer;
+import com.atcast.utils.HibernateUtils;
+
+public class CustomerDao {
+    /**
+     * 保存客户
+     * @param customer
+     */
+    public void save(Customer customer){
+        Session session = HibernateUtils.getCurrentSession();
+        session.save(customer);
+    }
+    /**
+     * 查询所有的客户
+     * @return
+     */
+    public List<Customer> findAll() {
+        Session session = HibernateUtils.getCurrentSession();
+        return session.createQuery("from Customer").list();
+    }
+}
+#+END_SRC
+
+** 客户的业务层
+CustomerService.java
+#+BEGIN_SRC java
+package com.atcast.service;
+import java.util.List;
+import org.hibernate.Session;
+import org.hibernate.Transaction;
+import org.junit.Test;
+import com.atcast.dao.CustomerDao;
+import com.atcast.domain.Customer;
+import com.atcast.utils.HibernateUtils;
+/**
+ * 客户的业务层
+ * @author Administrator
+ */
+public class CustomerService {
+    /**
+     * 保存客户
+     * @param customer
+     */
+    public void saveCustomer(Customer customer){
+        Session session = HibernateUtils.getCurrentSession();
+        Transaction tr = session.beginTransaction();
+        // 调用业务层
+        new CustomerDao().save(customer);
+        tr.commit();
+    }
+    
+    /**
+     * 查询所有的客户
+     */
+    public List<Customer> findAll(){
+        Session session = HibernateUtils.getCurrentSession();
+        Transaction tr = session.beginTransaction();
+        // 调用业务层
+        List<Customer> list = new CustomerDao().findAll();
+        tr.commit();
+        return list;
+    }
+    
+    @Test
+    public void run(){
+        Customer customer = new Customer();
+        customer.setCust_name("测试");
+        this.saveCustomer(customer);
+    }
+}
+#+END_SRC
+
+** 用户登录拦截器
+UserInterceptor.java
+#+BEGIN_SRC java
+package com.atcast.interceptor;
+import org.apache.struts2.ServletActionContext;
+import com.atcast.domain.User;
+import com.opensymphony.xwork2.ActionInvocation;
+importcom.opensymphony.xwork2.interceptor.MethodFilterInterceptor;
+/**
+ * 自定义拦截器，判断当前系统是否已经登录，如果登录，继续执行。如果没有登录，跳转到登录页面
+ * @author Administrator
+ */
+public class UserInterceptor extends MethodFilterInterceptor{
+    private static final long serialVersionUID = 335018670739692955L;
+    /**
+     * 进行拦截的方法
+     */
+    protected String doIntercept(ActionInvocation invocation) throws Exception {
+        // 获取session对象
+        User user = (User) ServletActionContext.getRequest().getSession().getAttribute("existUser");
+        if(user == null){
+            // 说明，没有登录，后面就不会执行了
+            return "login";
+        }
+        return invocation.invoke();
+    }
+}
+#+END_SRC
+
+** 左侧菜单页
+menu.jsp
+#+BEGIN_SRC html
+<TR>
+<TD class=menuSmall>
+    <A class=style2 href="${ pageContext.request.contextPath }/jsp/customer/add.jsp" target=main>－ 新增客户</A></TD>
+</TR>
+    <TR> 
+    <TD class=menuSmall>
+            <A class=style2 href="${ pageContext.request.contextPath }/customer_list.action" target=main>－ 客户列表</A>
+        </TD>
+    </TR>
+#+END_SRC
+
+** 新增客户页面
+add.jsp
+#+BEGIN_SRC html
+<%@ page language="java" contentType="text/html; charset=UTF-8"
+    pageEncoding="UTF-8"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<TITLE>添加客户</TITLE> 
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<LINK href="${pageContext.request.contextPath }/css/Style.css" type=text/css rel=stylesheet>
+<LINK href="${pageContext.request.contextPath }/css/Manage.css" type=text/css
+    rel=stylesheet>
+
+<META content="MSHTML 6.00.2900.3492" name=GENERATOR>
+</HEAD>
+<BODY>
+    <FORM id=form1 name=form1 action="${pageContext.request.contextPath }/customer_save.action" method=post>
+        <TABLE cellSpacing=0 cellPadding=0 width="98%" border=0>
+            <TBODY>
+                <TR>
+                    <TD width=15><IMG src="${pageContext.request.contextPath }/images/new_019.jpg"
+                        border=0></TD>
+                    <TD width="100%" background="${pageContext.request.contextPath }/images/new_020.jpg"
+                        height=20></TD>
+                    <TD width=15><IMG src="${pageContext.request.contextPath }/images/new_021.jpg"
+                        border=0></TD>
+                </TR>
+            </TBODY>
+        </TABLE>
+        <TABLE cellSpacing=0 cellPadding=0 width="98%" border=0>
+            <TBODY>
+                <TR>
+                    <TD width=15 background=${pageContext.request.contextPath }/images/new_022.jpg><IMG
+                        src="${pageContext.request.contextPath }/images/new_022.jpg" border=0></TD>
+                    <TD vAlign=top width="100%" bgColor=#ffffff>
+                        <TABLE cellSpacing=0 cellPadding=5 width="100%" border=0>
+                            <TR>
+    <TD class=manageHead>当前位置：客户管理 &gt; 添加客户</TD>
+                            </TR>
+                            <TR>
+                                <TD height=2></TD>
+                            </TR>
+                        </TABLE>
+    <TABLE cellSpacing=0 cellPadding=5  border=0>            
+                            <TR>
+                                <td>客户名称：</td>
+                                <td>
+        <INPUT class=textbox id=sChannel2
+style="WIDTH: 180px" maxLength=50 name="cust_name">
+                                </td>
+                                <td>客户级别 ：</td>
+                                <td>
+                                <INPUT class=textbox id=sChannel2
+        style="WIDTH: 180px" maxLength=50 name="cust_level">
+                                </td>
+                            </TR>
+                            
+                            <TR>
+                                
+                                <td>信息来源 ：</td>
+                                <td>
+                                <INPUT class=textbox id=sChannel2
+    style="WIDTH: 180px" maxLength=50 name="cust_source">
+                                </td>
+                                <td>联系人：</td>
+                                <td>
+                                <INPUT class=textbox id=sChannel2
+    style="WIDTH: 180px" maxLength=50 name="cust_linkman">
+                                </td>
+                            </TR>
+                            
+                            <TR>
+                                <td>固定电话 ：</td>
+                                <td>
+                                <INPUT class=textbox id=sChannel2
+    style="WIDTH: 180px" maxLength=50 name="cust_phone">
+                                </td>
+                                <td>移动电话 ：</td>
+                                <td>
+                                <INPUT class=textbox id=sChannel2
+    style="WIDTH: 180px" maxLength=50 name="cust_mobile">
+                                </td>
+                            </TR>
+                            
+                            <TR>
+                                <td>联系地址 ：</td>
+                                <td>
+                                <INPUT class=textbox id=sChannel2
+    style="WIDTH: 180px" maxLength=50 name="custAddress">
+                                </td>
+                                <td>邮政编码 ：</td>
+                                <td>
+                                <INPUT class=textbox id=sChannel2
+    style="WIDTH: 180px" maxLength=50 name="custZip">
+                                </td>
+                            </TR>
+                            <TR>
+                                <td>客户传真 ：</td>
+                                <td>
+                                <INPUT class=textbox id=sChannel2
+    style="WIDTH: 180px" maxLength=50 name="custFax">
+                                </td>
+                                <td>客户网址 ：</td>
+                                <td>
+                                <INPUT class=textbox id=sChannel2
+    style="WIDTH: 180px" maxLength=50 name="custWebsite">
+                                </td>
+                            </TR>
+                            <tr>
+                                <td rowspan=2>
+        <INPUT class=button id=sButton2 type=submit
+                value=" 保存 " name=sButton2>
+                                </td>
+                            </tr>
+                        </TABLE>
+                    </TD>
+                    <TD width=15 background="${pageContext.request.contextPath }/images/new_023.jpg">
+                    <IMG src="${pageContext.request.contextPath }/images/new_023.jpg" border=0></TD>
+                </TR>
+            </TBODY>
+        </TABLE>
+    <TABLE cellSpacing=0 cellPadding=0 width="98%" border=0>
+            <TBODY>
+                <TR>
+                    <TD width=15><IMG src="${pageContext.request.contextPath }/images/new_024.jpg"
+                        border=0></TD>
+                    <TD align=middle width="100%"
+                        background="${pageContext.request.contextPath }/images/new_025.jpg" height=15></TD>
+                    <TD width=15><IMG src="${pageContext.request.contextPath }/images/new_026.jpg"
+                        border=0></TD>
+                </TR>
+            </TBODY>
+        </TABLE>
+    </FORM>
+</BODY>
+</HTML>
+#+END_SRC
+
+** web.xml
+web.xml
+#+BEGIN_SRC nxml
+<?xml version="1.0" encoding="UTF-8"?>
+<web-app xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://java.sun.com/xml/ns/javaee" xsi:schemaLocation="http://java.sun.com/xml/ns/javaee http://java.sun.com/xml/ns/javaee/web-app_2_5.xsd" id="WebApp_ID" version="2.5">
+  <display-name>day32_crm</display-name>
+  <filter>
+    <filter-name>struts2</filter-name>
+    <filter-class>org.apache.struts2.dispatcher.ng.filter.StrutsPrepareAndExecuteFilter</filter-class>
+  </filter>
+  <filter-mapping>
+    <filter-name>struts2</filter-name>
+    <url-pattern>/*</url-pattern>
+  </filter-mapping>
+  <welcome-file-list>
+    <welcome-file>index.jsp</welcome-file>
+  </welcome-file-list>
+</web-app>
+#+END_SRC
+
+** struts2配置文件
+struts.xml
+#+BEGIN_SRC nxml
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE struts PUBLIC
+    "-//Apache Software Foundation//DTD Struts Configuration 2.3//EN"
+    "http://struts.apache.org/dtds/struts-2.3.dtd">
+<struts>
+    
+    <package name="crm" namespace="/" extends="struts-default">
+        <!-- 配置拦截器 -->
+        <interceptors>
+            <interceptor name="UserInterceptor" class="com.itheima.interceptor.UserInterceptor"/>
+        </interceptors>
+        
+        <global-results>
+            <result name="login">/login.jsp</result>
+        </global-results>
+        
+        <!-- 配置用户的模块 -->
+        <action name="user_*" class="com.atcast.action.UserAction" method="{1}">
+            <!-- <result name="login">/login.htm</result> -->
+            <result name="success">/index.jsp</result>
+            <interceptor-ref name="UserInterceptor">
+                <!-- login方法不拦截 -->
+                <param name="excludeMethods">login</param>
+            </interceptor-ref>
+            <interceptor-ref name="defaultStack"/>
+        </action>
+        
+        <!-- 客户模块 -->
+        <action name="customer_*" class="com.atcast.action.CustomerAction" method="{1}">
+            <result name="list">/jsp/customer/list.jsp</result>
+            <result name="relist" type="redirectAction">customer_list.action</result>
+            <interceptor-ref name="UserInterceptor"/>
+            <interceptor-ref name="defaultStack"/>
+        </action>
+    </package>
+</struts>
+#+END_SRC
+
+** 客户的控制层
+CustomerAction.java
+#+BEGIN_SRC java
+package com.atcast.action;
+import java.util.List;
+import com.atcast.domain.Customer;
+import com.atcast.service.CustomerService;
+import com.opensymphony.xwork2.ActionContext;
+import com.opensymphony.xwork2.ActionSupport;
+import com.opensymphony.xwork2.ModelDriven;
+import com.opensymphony.xwork2.util.ValueStack;
+/**
+ * 客户的控制器
+ * @author Administrator
+ */
+public class CustomerAction extends ActionSupport implements ModelDriven<Customer>{
+    private static final long serialVersionUID = -7111907817761614217L;
+    private Customer customer = new Customer();
+    public Customer getModel() {
+        return customer;
+    }
+     
+    /**
+     * 保存客户
+     * @return
+     */
+    public String save(){
+        // 保存客户
+        System.out.println("save");
+        new CustomerService().saveCustomer(customer);
+        return "relist";
+    }
+    
+    /**
+     * 查询所有的客户
+     * @return
+     */
+    public String list(){
+        List<Customer> clist = new CustomerService().findAll();
+        // 把clist压入到值栈中
+        ValueStack vs = ActionContext.getContext().getValueStack();
+        // 压栈，默认的规范：压入的是集合，一般使用set方法，压入是对象，使用push对象
+        vs.set("clist", clist);
+        return "list";
+    }
+}
+#+END_SRC
+
+** 显示客户页面
+list.jsp
+#+BEGIN_SRC html
+<%@ page language="java" contentType="text/html; charset=UTF-8"pageEncoding="UTF-8"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
+<%@ taglib prefix="s" uri="/struts-tags" %>
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<TITLE>客户列表</TITLE> 
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<LINK href="${pageContext.request.contextPath }/css/Style.css" type=text/css rel=stylesheet>
+<LINK href="${pageContext.request.contextPath }/css/Manage.css" type=text/css
+    rel=stylesheet>
+<script type="text/javascript" src="${pageContext.request.contextPath }/js/jquery-1.4.4.min.js"></script>
+<SCRIPT language=javascript>
+    function to_page(page){
+        if(page){
+            $("#page").val(page);
+        }
+        document.customerForm.submit();
+    }
+</SCRIPT>
+
+<META content="MSHTML 6.00.2900.3492" name=GENERATOR>
+</HEAD>
+<BODY>
+    <FORM id="customerForm" name="customerForm"
+        action="${pageContext.request.contextPath }/customerServlet?method=list"
+        method=post>
+        
+        <TABLE cellSpacing=0 cellPadding=0 width="98%" border=0>
+            <TBODY>
+                <TR>
+                    <TD width=15><IMG src="${pageContext.request.contextPath }/images/new_019.jpg"
+                        border=0></TD>
+                    <TD width="100%" background="${pageContext.request.contextPath }/images/new_020.jpg"
+                        height=20></TD>
+                    <TD width=15><IMG src="${pageContext.request.contextPath }/images/new_021.jpg"
+                        border=0></TD>
+                </TR>
+            </TBODY>
+        </TABLE>
+        <TABLE cellSpacing=0 cellPadding=0 width="98%" border=0>
+            <TBODY>
+                <TR>
+                    <TD width=15 background=${pageContext.request.contextPath }/images/new_022.jpg><IMG
+                        src="${pageContext.request.contextPath }/images/new_022.jpg" border=0></TD>
+                    <TD vAlign=top width="100%" bgColor=#ffffff>
+                        <TABLE cellSpacing=0 cellPadding=5 width="100%" border=0>
+                            <TR>
+    <TD class=manageHead>当前位置：客户管理 &gt; 客户列表</TD>
+                            </TR>
+                            <TR>
+                                <TD height=2></TD>
+                            </TR>
+                        </TABLE>
+    <TABLE borderColor=#cccccc cellSpacing=0 cellPadding=0
+                            width="100%" align=center border=0>
+                            <TBODY>
+                                <TR>
+                                    <TD height=25>
+                                        <TABLE cellSpacing=0 cellPadding=2 border=0>
+                                            <TBODY>
+                                                <TR>
+                                                    <TD>客户名称：</TD>
+    <TD><INPUT class=textbox id=sChannel2
+            style="WIDTH: 80px" maxLength=50 name="custName"></TD>
+        
+<TD><INPUT class=button id=sButton2 type=submit
+        value=" 筛选 " name=sButton2></TD>
+                                                </TR>
+                                            </TBODY>
+                                        </TABLE>
+                                    </TD>
+                                </TR>
+                                
+                                <TR>
+                                    <TD>
+                                        <TABLE id=grid
+                                            style="BORDER-TOP-WIDTH: 0px; FONT-WEIGHT: normal; BORDER-LEFT-WIDTH: 0px; BORDER-LEFT-COLOR: #cccccc; BORDER-BOTTOM-WIDTH: 0px; BORDER-BOTTOM-COLOR: #cccccc; WIDTH: 100%; BORDER-TOP-COLOR: #cccccc; FONT-STYLE: normal; BACKGROUND-COLOR: #cccccc; BORDER-RIGHT-WIDTH: 0px; TEXT-DECORATION: none; BORDER-RIGHT-COLOR: #cccccc"
+                                            cellSpacing=1 cellPadding=2 rules=all border=0>
+                                            <TBODY>
+                                                <TR
+                                                style="FONT-WEIGHT: bold; FONT-STYLE: normal; BACKGROUND-COLOR: #eeeeee; TEXT-DECORATION: none">
+                                                    <TD>客户名称</TD>
+                                                    <TD>客户级别</TD>
+                                                    <TD>客户来源</TD>
+                                                    <TD>联系人</TD>
+                                                    <TD>电话</TD>
+                                                    <TD>手机</TD>
+                                                    <TD>操作</TD>
+                                        </TR>
+    <%-- <c:forEach items="${clist}" var="customer">
+        <TR     style="FONT-WEIGHT: normal; FONT-STYLE: normal; BACKGROUND-COLOR: white; TEXT-DECORATION: none">
+    <TD>${customer.cust_name }</TD>                                 <TD>${customer.cust_level }</TD>                                <TD>${customer.cust_source }</TD>                               <TD>${customer.cust_linkman }</TD>                              <TD>${customer.cust_phone }</TD>                                <TD>${customer.cust_mobile }</TD>
+                                                    <TD>
+                                                    <a href="${pageContext.request.contextPath }/customerServlet?method=edit&custId=${customer.cust_id}">修改</a>
+                                                    &nbsp;&nbsp;
+                                                    <a href="${pageContext.request.contextPath }/customerServlet?method=delete&custId=${customer.cust_id}">删除</a>
+                                                    </TD>
+                                                </TR>
+                                                </c:forEach> --%>
+                                                
+                        <!-- struts2标签迭代 -->
+            <s:iterator value="clist">
+                                                <TR
+                                style="FONT-WEIGHT: normal; FONT-STYLE: normal; BACKGROUND-COLOR: white; TEXT-DECORATION: none">
+    <TD><s:property value="cust_name"/></TD>
+    <TD><s:property value="cust_level"/></TD>
+    <TD><s:property value="cust_source"/></TD>
+    <TD><s:property value="cust_linkman"/></TD>
+    <TD><s:property value="cust_phone"/></TD>
+    <TD><s:property value="cust_mobile"/></TD>
+    <TD>
+                                                    <a href="${pageContext.request.contextPath }/customerServlet?method=edit&custId=<s:property value="cust_id"/>">修改</a>
+                                                    &nbsp;&nbsp;
+                                                    <a href="${pageContext.request.contextPath }/customerServlet?method=delete&custId=<s:property value="cust_id"/>">删除</a>
+                                                    </TD>
+                                                </TR>
+                                                </s:iterator>
+                                            </TBODY>
+                                        </TABLE>
+                                    </TD>
+                                </TR>
+                                
+                                <TR>
+                                    <TD><SPAN id=pagelink>
+                                            <DIV
+                                                style="LINE-HEIGHT: 20px; HEIGHT: 20px; TEXT-ALIGN: right">
+共[<B>${total}</B>]条记录,[<B>${totalPage}</B>]页,每页显示
+        <select name="pageSize">
+<option value="15" <c:if test="${pageSize==1 }">selected</c:if>>1</option>
+                                                <option value="30" <c:if test="${pageSize==30 }">selected</c:if>>30</option>
+                                                </select>
+                                                条
+                                                [<A href="javascript:to_page(${page-1})">前一页</A>]
+                                                <B>${page}</B>
+                                                [<A href="javascript:to_page(${page+1})">后一页</A>] 
+                                                到
+                                                <input type="text" size="3" id="page" name="page" />
+                                                页
+                                                
+                                                <input type="button" value="Go" onclick="to_page()"/>
+                                            </DIV>
+                                    </SPAN></TD>
+                                </TR>
+                            </TBODY>
+                        </TABLE>
+                    </TD>
+                    <TD width=15 background="${pageContext.request.contextPath }/images/new_023.jpg"><IMG
+                        src="${pageContext.request.contextPath }/images/new_023.jpg" border=0></TD>
+                </TR>
+            </TBODY>
+        </TABLE>
+        <TABLE cellSpacing=0 cellPadding=0 width="98%" border=0>
+            <TBODY>
+                <TR>
+                    <TD width=15><IMG src="${pageContext.request.contextPath }/images/new_024.jpg"
+                        border=0></TD>
+                    <TD align=middle width="100%"
+                        background="${pageContext.request.contextPath }/images/new_025.jpg" height=15></TD>
+                    <TD width=15><IMG src="${pageContext.request.contextPath }/images/new_026.jpg"
+                        border=0></TD>
+                </TR>
+            </TBODY>
+        </TABLE>
+    </FORM>
+</BODY>
+</HTML>
+#+END_SRC
+
+本章源码见 =Struts2CRM02=

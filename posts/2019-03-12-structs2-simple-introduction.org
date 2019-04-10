@@ -1,0 +1,164 @@
+#+OPTIONS: ':nil *:t -:t ::t <:t H:5 \n:nil ^:{} arch:headline
+#+OPTIONS: author:t broken-links:nil c:nil creator:nil
+#+OPTIONS: d:(not "LOGBOOK") date:t e:t email:nil f:t inline:t num:t
+#+OPTIONS: p:nil pri:nil prop:nil stat:t tags:t tasks:t tex:t
+#+OPTIONS: timestamp:t title:t toc:t todo:t |:t
+#+TITLE: 六、Structs2 客户登录之知识点
+#+DATE: <2019-03-12 Tue>
+#+AUTHOR: Ynjxsjmh
+#+EMAIL: ynjxsjmh@gmail.com
+#+FILETAGS: ::
+
+* 学习内容
+1. 掌握struts入门案例
+2. struts工作流程
+3. struts.xml配置文件
+4. 结合Hibernate进行开发
+
+* Struts2框架的概述
+** 什么是Struts2
+Struts2是一个基于MVC设计模式的Web应用框架，它本质上相当于一个servlet，在MVC设计模式中，Struts2作为控制器(Controller)来建立模型与视图的数据交互。
+
+Struts2是Struts的下一代产品，是在struts1和WebWork的技术基础上进行了合并的全新的Struts2框架。其全新的Struts2的体系结构与Struts1的体系结构差别巨大。Struts2以WebWork为核心，采用拦截器的机制来处理用户的请求，这样的设计也使得业务逻辑控制器能够与ServletAPI完全脱离开，所以Struts2可以理解为WebWork的更新产品。虽然从Struts1到Struts2有着太大的变化，但是相对于WebWork，Struts2的变化很小。
+
+https://raw.githubusercontent.com/Ynjxsjmh/ynjxsjmh.github.io/master/img/2019/2019-03-12-01-01.png
+
+控制层除了使用 Structs2 框架实现，也可以使用 SpringMVC 和 SpringBoot。
+
+Struts2框架预先实现了一些功能：
+1. 请求数据自动封装（把上节的 BeanUtils 融合到框架里了）
+2. 文件上传的功能
+3. 对国际化功能的简化（根据浏览器的语言环境，显示对应的语言给用户看）
+4. 数据效验功能
+等等………………
+
+** struts2执行流程
+1. 服务器启动, 加载项目web.xml
+2. 创建Struts核心过滤器对象，执行filter -> init()
+|       struts-default.xml | 核心功能的初始化   |
+|       struts-plugin.xml  | struts相关插件     |
+|       struts.xml         | 用户编写的配置文件 |
+Dispatcher.class中可以找到：
+#+BEGIN_SRC java
+private static final String DEFAULT_CONFIGURATION_PATHS = "struts-default.xml,struts-plugin.xml,struts.xml";
+#+END_SRC
+3. 用户访问Action, 服务器根据访问路径名称，找对应的aciton配置, 创建action对象（以后每次访问，都会创建action实例）
+4. 执行默认拦截器栈中定义的18个拦截器
+5. 执行action的业务处理方法
+ 
+https://raw.githubusercontent.com/Ynjxsjmh/ynjxsjmh.github.io/master/img/2019/2019-03-12-01-02.png
+
+1. 客户端发出请求，通过容器(Tomcat)，产生request和response对象，（response对象此时为空）首先请求先经过其它的过滤器，最后到达struts的核心过滤器。
+2. 请求交给ActionMapper对象，ActionMapper 可以获取请求路径的最后一个 / 的内容，然后通过 web.xml 中的 url-pattern 判断是否需要 struts 处理。如果需要struts处理，经将请求转给struts的核心过滤器，否则交给 HttpServlet 处理，直接定位到指定的jsp页面。
+3. 核心过滤器将请求交给ActionProxy代理对象， ActionProxy委托ConfigurationManager配置管理器对象去加载struts的配置文件，然后通过ActionMapping将请求交给对应的Action处理。（假设是hello.action，则找到应交给HelloAction处理）创建HelloAction的代理对象和拦截器列，依次经过18个拦截器，到达Action
+4. 调用Action中的业务方法进行处理，得到返回值(比如返回为ok字符串)。再查找有没有对应的JSP文件（ok.jsp）（通过result字符串找到result.jsp使用了模板技术，由freemarker.jar提供）
+5. 逆序再经过struts默认的拦截器，将结果填充到response对象，再逆序经过struts核心拦截器和其它拦截器，将结果显示给用户。
+
+** struts详解
+1. <package>标签，如果要配置<Action>的标签，那么必须要先配置<package>标签，代表的包的概念
+包含的属性
+| name      | 包的名称，要求是唯一的，管理action配置                                                       |
+| extends   | 继承，可以继承其他的包，只要继承了，那么该包就包含了其他包的功能，一般都是继承struts-default |
+| namespace | 名称空间，一般与<action>标签中的name属性共同决定访问路径（通俗话：怎么来访问action）         |
+|           | 常见的配置如下                                                                               |
+|           | ~namespace="/"~ 根名称空间                                                                   |
+|           | ~namespace="/aaa"~ 带有名称的名称空间                                                        |
+| abstract  | 抽象的。这个属性基本很少使用，值如果是true，那么编写的包是被继承的                           |
+
+2. <action>标签
+代表配置action类，包含的属性
+| name   | 和<package>标签的namespace属性一起来决定访问路径的 |
+| class  | 配置Action类的全路径（默认值是ActionSupport类）    |
+| method | Action类中执行的方法，如果不指定，默认值是execute  |
+
+3. <result>标签
+action类中方法执行，返回的结果跳转的页面
++------+-----------------------------------------------------------------+
+| name | 结果页面逻辑视图名称                                            |
+| type | 结果类型（默认值是转发，也可以设置其他的值）                    |
++------+---------------+-------------------------------------------------+
+| type |dispatcher     | 默认值，转发。转发到一个JSP页面                 |
+|  的  |redirect       | 重定向（再走次Action），重定向到一个JSP页面     |
+|  值  |chain          | 转发,转发到一个Action                           |
+|      |redirectAction | 重定向到另一个Action                            |
++------+---------------+-------------------------------------------------+
+
+* Struts入门
+** web项目，引入struts - jar包
+
+https://raw.githubusercontent.com/Ynjxsjmh/ynjxsjmh.github.io/master/img/2019/2019-03-12-01-03.png
+
+| commons-fileupload-1.2.2.jar | 【文件上传相关包】              |
+| commons-io-2.0.1.jar         | 【io流包】                      |
+| *struts2-core-2.3.4.1.jar*   | 【struts2核心功能包】           |
+| *xwork-core-2.3.4.1.jar*     | 【Xwork核心包】                 |
+| ognl-3.0.5.jar               | 【Ognl表达式功能支持表】        |
+| commons-lang3-3.1.jar        | 【struts对java.lang包的扩展】   |
+| freemarker-2.3.19.jar        | 【struts的标签模板库jar文件】   |
+| javassist-3.11.0.GA.jar      | 【struts对字节码的处理相关jar】 |
+
+** web.xml中，引入struts的核心功能，配置过滤器
+web.xml
+
+#+BEGIN_SRC nxml
+<?xml version="1.0" encoding="UTF-8"?>
+<web-app version="2.5" xmlns="http://java.sun.com/xml/ns/javaee"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://java.sun.com/xml/ns/javaee 
+    http://java.sun.com/xml/ns/javaee/web-app_2_5.xsd">
+
+    <!-- 引入struts核心过滤器 -->
+    <filter>
+        <filter-name>struts2</filter-name>
+    <filter-class>org.apache.struts2.dispatcher.ng.filter.StrutsPrepareAndExecuteFilter</filter-class>
+    </filter>
+    <filter-mapping>
+        <filter-name>struts2</filter-name>
+        <url-pattern>/*</url-pattern>
+    </filter-mapping>
+</web-app>
+#+END_SRC
+
+默认支持*.action,如果要支持其它的需要在struts.xml中做配置。
+
+** 开发action
+HelloAction.java
+
+#+BEGIN_SRC java
+package cn.atcast.action;
+import com.opensymphony.xwork2.ActionSupport;
+public class HelloAction extends ActionSupport {
+    public String execute() throws Exception {
+        System.out.println("访问到了action，正在处理请求");
+        System.out.println("调用service");
+        return "success";
+    }
+}
+#+END_SRC
+
+** 配置struts.xml
+struts.xml
+#+BEGIN_SRC nxml
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE struts PUBLIC
+"-//Apache Software Foundation//DTD Struts Configuration 2.0//EN"
+          "http://struts.apache.org/dtds/struts-2.0.dtd">
+<struts>
+     <package name="xxxx" extends="struts-default">
+        <action name="hello" class="cn.atcast.action.HelloAction" method="execute">
+            <result name="success">/success.jsp</result>
+        </action>
+    </package> 
+</struts>
+#+END_SRC
+
+** success.jsp
+#+BEGIN_SRC html
+<body>
+success.jsp  
+</body>
+#+END_SRC
+
+此时，可以通过访问 http://localhost:8080/struts211/Struts2SimplestDemo 测试
+
+本章源码见 =Struts2SimplestDemo=

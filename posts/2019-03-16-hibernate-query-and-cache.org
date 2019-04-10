@@ -1,0 +1,1200 @@
+#+OPTIONS: ':nil *:t -:t ::t <:t H:5 \n:nil ^:{} arch:headline
+#+OPTIONS: author:t broken-links:nil c:nil creator:nil
+#+OPTIONS: d:(not "LOGBOOK") date:t e:t email:nil f:t inline:t num:t
+#+OPTIONS: p:nil pri:nil prop:nil stat:t tags:t tasks:t tex:t
+#+OPTIONS: timestamp:t title:t toc:t todo:t |:t
+#+TITLE: 五、Hibernate 查询和缓存
+#+DATE: <2019-03-16 Sat>
+#+AUTHOR: Ynjxsjmh
+#+EMAIL: ynjxsjmh@gmail.com
+#+FILETAGS: ::
+
+* 学习内容
+1. 对象状态
+2. lazy懒加载
+3. 查询
+4. 缓存
+
+* 对象的状态
+Hibernate中对象的状态： 临时/瞬时状态、持久化状态、游离状态。
+
+| 状态       | 特点                       |
+|------------+----------------------------|
+| 临时状态   | 直接 new 出来的对象        |
+|            | 不处于 session 的管理      |
+|            | 数据库中没有对象的记录     |
+| 持久化状态 | 处于 session 的管理        |
+|            | 数据库中有对应的记录       |
+| 游离状态   | 不处于 session 的管理      |
+|            | 数据库中有对应的记录       |
+|            | session 关闭后，对象的状态 |
+
+当调用session的save/saveOrUpdate/get/load/list等方法的时候，对象就是持久化状态。
+
+处于持久化状态的对象，当对对象属性进行更改的时候，会反映到数据库中!
+
+** hibernate.cfg.xml
+#+BEGIN_SRC nxml
+  <!DOCTYPE hibernate-configuration PUBLIC
+    "-//Hibernate/Hibernate Configuration DTD 3.0//EN"
+    "http://www.hibernate.org/dtd/hibernate-configuration-3.0.dtd">
+<hibernate-configuration>
+    <!-- 通常，一个session-factory节点代表一个数据库 -->
+    <session-factory>
+            <!-- 1. 数据库连接配置 -->
+        <property name="hibernate.connection.driver_class">com.mysql.jdbc.Driver</property>
+        <property name="hibernate.connection.url">jdbc:mysql:///hib_demo?useUnicode=true&amp;characterEncoding=UTF-8</property>
+        <property name="hibernate.connection.username">root</property>
+        <property name="hibernate.connection.password">root</property>
+        <!-- 
+            数据库方法配置， hibernate在运行的时候，会根据不同的方言生成符合当前数据库语法的sql
+         -->
+        <property name="hibernate.dialect">org.hibernate.dialect.MySQL5Dialect</property>
+        
+        <!-- 2. 其他相关配置 -->
+        <!-- 2.1 显示hibernate在运行时候执行的sql语句 -->
+        <property name="hibernate.show_sql">true</property>
+        <!-- 2.2 格式化sql
+    <property name="hibernate.format_sql">true</property>  -->
+        <!-- 2.3 自动建表  -->
+        <property name="hibernate.hbm2ddl.auto">update</property>
+        
+        <!-- 3. 加载所有映射 
+    <mapping resource="cn/atcast/a_hello/Employee.hbm.xml"/>
+        -->
+    </session-factory>
+</hibernate-configuration>
+#+END_SRC
+
+** User.java
+#+BEGIN_SRC java
+package cn.atcast.a_status;
+public class User {
+    private int userId;
+    private String userName;
+    public int getUserId() {
+        return userId;
+    }
+    public void setUserId(int userId) {
+        this.userId = userId;
+    }
+    public String getUserName() {
+        return userName;
+    }
+    public void setUserName(String userName) {
+        this.userName = userName;
+    }
+    @Override
+    public String toString() {
+        return "User [userId=" + userId + ", userName=" + userName + "]";
+    }
+} 
+#+END_SRC
+
+** User.hbm.xml
+#+BEGIN_SRC nxml
+ <?xml version="1.0"?>
+<!DOCTYPE hibernate-mapping PUBLIC 
+    "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+    "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
+<hibernate-mapping package="cn.atcast.a_status">
+    <class name="User" table="t_user">
+        <id name="userId" column="id">
+            <generator class="native"></generator>
+        </id>   
+        <property name="userName"></property>
+    </class>
+</hibernate-mapping>
+#+END_SRC
+
+** App1_status.java
+#+BEGIN_SRC java
+ package cn.atcast.a_status;
+
+import java.util.HashSet;
+import java.util.Set;
+import org.hibernate.SessionFactory;
+import org.hibernate.cfg.Configuration;
+import org.hibernate.classic.Session;
+import org.junit.Test;
+
+public class App1_status {
+    private static SessionFactory sf;
+    static {
+        sf = new Configuration()
+            .configure()
+            .addClass(User.class)   // 测试时候使用
+            .buildSessionFactory();
+    }
+
+    //1. 对象状态的转换
+    @Test
+    public void testSaveSet() throws Exception {
+        Session session = sf.openSession();
+        session.beginTransaction();
+        
+        //创建对象   【临时状态】
+        User user = new User();
+        user.setUserName("Jack22222");
+        //保存  【持久化状态】
+        session.save(user);     
+        user.setUserName("Jack333333");  // 会反映到数据库
+        
+        // 查询
+        //当调用session的save/saveOrUpdate/get/load/list/iterator方法的时候，都会把对象放入session的缓存中
+//      User user1 = (User) session.get(User.class, 1);
+//      user1.setUserName("Tomcat");// hibernate会自动与数据库匹配（一级缓存），如果一样就不更新数据库
+        
+        session.getTransaction().commit();
+        session.close();    
+        
+        user.setUserName("Jack444444444");
+        // 打印                         【游离状态】
+        System.out.println(user.getUserId());
+        System.out.println(user.getUserName());
+    }
+}
+#+END_SRC
+
+** App2_cache.java
+#+BEGIN_SRC java
+package cn.atcast.a_status;
+import java.util.HashSet;
+import java.util.Set;
+import org.hibernate.SessionFactory;
+import org.hibernate.cfg.Configuration;
+import org.hibernate.classic.Session;
+import org.junit.Test;
+
+public class App2_cache {
+    private static SessionFactory sf;
+    static {
+        sf = new Configuration()
+            .configure()
+            .addClass(User.class)   // 测试时候使用
+            .buildSessionFactory();
+    }
+
+    @Test
+    public void testCache() throws Exception {
+        Session session = sf.openSession();
+        session.beginTransaction();
+        User user = null;
+        
+        // 查询 (先要执行testSaveSet()方法，在数据库中增加一条数据)
+    //先执行一次，将数据放在user对象后，放在一级缓存中。会有查询的语句
+        user = (User) session.get(User.class, 1);
+        //先检查缓存中是否有数据，如果有不查询数据库，直接从缓存中获取。再次进行查询，不会发出sql语句
+        user = (User) session.get(User.class, 1);
+        
+        session.getTransaction().commit();
+        session.close();
+    }
+    
+    @Test
+    public void flush() throws Exception {
+        Session session = sf.openSession();
+        session.beginTransaction();
+        
+        User user = null;
+        user = (User) session.get(User.class, 1);
+         
+        //会执行一条更新语句
+//      user.setUserName("Jack");
+//      user.setUserName("Jack_new");
+         
+        
+        //会执行两条更新语句
+        user.setUserName("Jack");
+        // 缓存数据与数据库同步
+        session.flush();
+        user.setUserName("Jack_new");
+        
+        session.getTransaction().commit();  // session.flush();
+        session.close();
+    }
+    
+    @Test
+    public void clear() throws Exception {
+        Session session = sf.openSession();
+        session.beginTransaction();
+        
+        User user = null;
+        // 查询
+        user = (User) session.get(User.class, 1);
+        // 清空缓存内容 
+        //session.clear(); // 清空所有
+         session.evict(user);// 清除指定
+        //会再次发出select语句查询数据库
+        user = (User) session.get(User.class, 1);
+    
+        session.getTransaction().commit();  // session.flush();
+        session.close();
+    }
+    
+    //不同的session是否会共享缓存数据?
+    @Test
+    public void sessionTest() throws Exception {
+        Session session1 = sf.openSession();
+        session1.beginTransaction();
+        Session session2 = sf.openSession();
+        session2.beginTransaction();
+        
+        // user放入session1的缓存区
+        User user = (User) session1.get(User.class, 1);
+        // user放入session2的缓存区,并没有从缓存session1中获取user对象，而是再次发出update语句
+        User user2 = (User) session2.get(User.class, 1);
+        
+        session1.getTransaction().commit();  // session1.flush();
+        session1.close();
+        session2.getTransaction().commit();  // session2.flush();
+        session2.close();
+    }
+}
+#+END_SRC
+
+** App3_list_iterator.java
+#+BEGIN_SRC java
+package cn.atcast.a_status;
+import java.util.Iterator;
+import java.util.List;
+
+import org.hibernate.Query;
+import org.hibernate.SessionFactory;
+import org.hibernate.cfg.Configuration;
+import org.hibernate.classic.Session;
+import org.junit.Test;
+
+public class App3_list_iterator {
+    
+    private static SessionFactory sf;
+    static {
+        sf = new Configuration()
+            .configure()
+            .addClass(User.class)   // 测试时候使用
+            .buildSessionFactory();
+    }
+    /**
+     * list与iterator区别
+     * 1. list 方法
+     * 2. iterator 方法
+     * 3. 缓存
+     * @throws Exception
+     */
+    //1.  list 方法  
+    /*  一次把所有的记录都查询出来，
+        会放入缓存，但不会从缓存中获取数据
+        Hibernate: select user0_.id as id0_, user0_.userName as userName0_ from t_user user0_
+        User [userId=1, userName=New Name]
+        User [userId=2, userName=tom]
+        User [userId=3, userName=jerry]
+     */
+    @Test
+    public void list() throws Exception {
+        Session session = sf.openSession();
+        session.beginTransaction();
+        // HQL查询
+        Query q = session.createQuery("from User ");
+        // list()方法
+        List<User> list = q.list();
+        
+        for (int i=0; i<list.size(); i++){
+            System.out.println(list.get(i));
+        }
+        
+        session.getTransaction().commit();  
+        session.close();
+    }
+    
+    //2. iterator 方法
+    /*
+        N+1查询； N表示所有的记录总数
+        即会先发送一条语句查询所有记录的主键（1），
+        再根据每一个主键再去数据库查询（N）！
+        会放入缓存，也会从缓存中取数据！
+        Hibernate: select user0_.id as col_0_0_ from t_user user0_
+        Hibernate: select user0_.id as id0_0_, user0_.userName as userName0_0_ from t_user user0_ where user0_.id=?
+        User [userId=1, userName=New Name]
+        Hibernate: select user0_.id as id0_0_, user0_.userName as userName0_0_ from t_user user0_ where user0_.id=?
+        User [userId=2, userName=tom]
+        Hibernate: select user0_.id as id0_0_, user0_.userName as userName0_0_ from t_user user0_ where user0_.id=?
+        User [userId=3, userName=jerry]
+     */
+    @Test
+    public void iterator() throws Exception {
+        Session session = sf.openSession();
+        session.beginTransaction();
+        // HQL查询
+        Query q = session.createQuery("from User ");
+        // iterator()方法
+        Iterator<User> it = q.iterate();
+        while(it.hasNext()){
+            // 得到当前迭代的每一个对象
+            User user = it.next();
+            System.out.println(user);
+        }
+        
+        session.getTransaction().commit();  
+        session.close();
+    }
+    
+    
+    //3. 缓存
+    @Test
+    public void cache() throws Exception {
+        Session session = sf.openSession();
+        session.beginTransaction();
+        /*
+         * Hibernate: select user0_.id as id0_, user0_.userName as userName0_ from t_user user0_
+            User [userId=1, userName=New Name]
+            User [userId=2, userName=tom]
+            =========list===========
+            Hibernate: select user0_.id as id0_, user0_.userName as userName0_ from t_user user0_
+            User [userId=1, userName=New Name]
+            User [userId=2, userName=tom]
+         */
+        /**************执行2次list****************
+        Query q = session.createQuery("from User");
+        List<User> list = q.list();      // 【会放入？】
+        for (int i=0; i<list.size(); i++){
+            System.out.println(list.get(i));
+        }
+        System.out.println("=========list===========");
+        list = q.list();                // 【会放入?】
+        for (int i=0; i<list.size(); i++){
+            System.out.println(list.get(i));
+        }
+        */
+         
+        /**************执行2次iteator*****************/
+        /*
+         *  Hibernate: select user0_.id as col_0_0_ from t_user user0_
+            Hibernate: select user0_.id as id0_0_, user0_.userName as userName0_0_ from t_user user0_ where user0_.id=?
+            User [userId=1, userName=New Name]
+            Hibernate: select user0_.id as id0_0_, user0_.userName as userName0_0_ from t_user user0_ where user0_.id=?
+            User [userId=2, userName=tom]
+            Hibernate: select user0_.id as id0_0_, user0_.userName as userName0_0_ from t_user user0_ where user0_.id=?
+            User [userId=3, userName=jerry]
+            ==========iterate===========
+            Hibernate: select user0_.id as col_0_0_ from t_user user0_
+            User [userId=1, userName=New Name]
+            User [userId=2, userName=tom]
+            User [userId=3, userName=jerry]
+         */
+        Query q = session.createQuery("from User ");
+        Iterator<User> it = q.iterate();        // 【放入缓存】
+        while(it.hasNext()){
+            User user = it.next();
+            System.out.println(user);
+        }
+        System.out.println("==========iterate===========");
+        it = q.iterate();                       // 【也会从缓存中取】
+        while(it.hasNext()){
+            User user = it.next();
+            System.out.println(user);
+        }
+         
+        session.getTransaction().commit();  
+        session.close();
+    }
+    
+    // 测试list方法会放入缓存，但不会从缓存中获取数据
+    //先用list查询，再用Iterator查询，如果Iterator直接从缓存中取数据，说明list方法将数据库中读取的数据放入了缓存。
+    /*
+     *  Hibernate: select user0_.id as id0_, user0_.userName as userName0_ from t_user user0_
+        User [userId=1, userName=New Name]
+        User [userId=2, userName=tom]
+        User [userId=3, userName=jerry]
+        Hibernate: select user0_.id as col_0_0_ from t_user user0_
+        User [userId=1, userName=New Name]  //直接从缓存中取数据,不再执行select语句
+        User [userId=2, userName=tom]
+        User [userId=3, userName=jerry]
+     */
+    @Test
+    public void list_iterator() throws Exception {
+        Session session = sf.openSession();
+        session.beginTransaction();
+        
+        // 得到Query接口的引用
+        Query q = session.createQuery("from User ");
+        
+        // 先list  【会放入缓存，但不会从缓存中获取数据】
+        List<User> list = q.list(); 
+        for (int i=0; i<list.size(); i++){
+            System.out.println(list.get(i));
+        }
+        
+        // 再iteraotr  (会从缓存中取)
+        Iterator<User> it = q.iterate();
+        while(it.hasNext()){
+            User user = it.next();
+            System.out.println(user);
+        }
+        
+        session.getTransaction().commit();  
+        session.close();
+    }
+}
+#+END_SRC
+
+* 懒加载
+get与load方法区别
+
+- get: 及时加载，只要调用get方法立刻向数据库查询
+- load:默认使用懒加载，当用到数据的时候才向数据库查询。当我们使用session.load()方法来加载一个对象时，此时并不会发出sql语句，当前得到的这个对象其实是一个代理对象，这个代理对象只保存了实体对象的id值，只有当我们要使用这个对象，得到其它属性时，这个时候才会发出sql语句，从数据库中去查询我们的对象。
+
+
+懒加载：(lazy)
+- 概念：当用到数据的时候才向数据库查询，这就是hibernate的懒加载特性。
+- 目的：提供程序执行效率！
+
+lazy 值
+| true  | 使用懒加载                                                     |
+| false | 关闭懒加载                                                     |
+| extra | (在集合数据懒加载时候提升效率)                                 |
+|       | 在真正使用数据的时候才向数据库发送查询的sql；                  |
+|       | 如果调用集合的size()/isEmpty()方法，只是统计，不真正查询数据！ |
+
+* hibernate查询
+** HQL 查询
+*** Dept.java
+#+BEGIN_SRC java
+package cn.atcast.b_query;
+
+import java.util.HashSet;
+import java.util.Set;
+public class Dept {
+    private int deptId;
+    private String deptName;
+    // 【一对多】 部门对应的多个员工
+    private Set<Employee> emps = new HashSet<Employee>();
+    
+    public Dept(int deptId, String deptName) {
+        super();
+        this.deptId = deptId;
+        this.deptName = deptName;
+    }
+    public Dept() {
+        super();
+    }
+    public int getDeptId() {
+        return deptId;
+    }
+    public void setDeptId(int deptId) {
+        this.deptId = deptId;
+    }
+    public String getDeptName() {
+        return deptName;
+    }
+    public void setDeptName(String deptName) {
+        this.deptName = deptName;
+    }
+    public Set<Employee> getEmps() {
+        return emps;
+    }
+    public void setEmps(Set<Employee> emps) {
+        this.emps = emps;
+    }
+}
+#+END_SRC
+*** Employee.java
+#+BEGIN_SRC java
+package cn.atcast.b_query;
+public class Employee {
+    private int empId;
+    private String empName;
+    private double salary;
+    // 【多对一】员工与部门
+    private Dept dept;
+    
+    public int getEmpId() {
+        return empId;
+    }
+    public void setEmpId(int empId) {
+        this.empId = empId;
+    }
+    public String getEmpName() {
+        return empName;
+    }
+    public void setEmpName(String empName) {
+        this.empName = empName;
+    }
+    public double getSalary() {
+        return salary;
+    }
+    public void setSalary(double salary) {
+        this.salary = salary;
+    }
+    public Dept getDept() {
+        return dept;
+    }
+    public void setDept(Dept dept) {
+        this.dept = dept;
+    }
+}
+#+END_SRC
+
+*** Dept.hbm.xml
+#+BEGIN_SRC nxml
+<?xml version="1.0"?>
+<!DOCTYPE hibernate-mapping PUBLIC 
+    "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+    "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
+<hibernate-mapping package="cn.atcast.b_query" auto-import="true">
+    <class name="Dept" table="t_dept" >
+        <id name="deptId">
+            <generator class="native"></generator>
+        </id>   
+        <property name="deptName" length="20"></property>
+         <set name="emps">
+             <key column="dept_id"></key>
+             <one-to-many class="Employee"/>
+         </set>
+    </class>
+    <!-- HQL查询优化 -->
+    <!-- 存放sql语句    -->
+    <query name="getAllDept">
+        <![CDATA[
+            from Dept d where deptId < ?
+        ]]>
+    </query>
+</hibernate-mapping>
+#+END_SRC
+
+*** Employee.hbm.xml
+#+BEGIN_SRC nxml
+<?xml version="1.0"?>
+<!DOCTYPE hibernate-mapping PUBLIC 
+    "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+    "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
+<hibernate-mapping package="cn.atcast.b_query">
+    <class name="Employee" table="t_employee">
+        <id name="empId">
+            <generator class="native"></generator>
+        </id>   
+        <property name="empName" length="20"></property>
+        <property name="salary" type="double"></property>
+        
+        <many-to-one name="dept" column="dept_id" class="Dept"></many-to-one> 
+    </class>
+</hibernate-mapping>
+#+END_SRC
+*** testData.java
+#+BEGIN_SRC java
+package cn.atcast.b_query;
+import org.hibernate.SessionFactory;
+import org.hibernate.cfg.Configuration;
+import org.hibernate.classic.Session;
+import org.junit.Test;
+
+public class testData {
+    private static SessionFactory sf;
+    static {
+        sf = new Configuration()
+            .configure()
+            .addClass(Dept.class)   
+            .addClass(Employee.class)   // 测试时候使用
+            .buildSessionFactory();
+    }
+    // 【推荐】 保存， 部门方 【多的一方法操作】
+    @Test
+    public void save() {
+        
+        Session session = sf.openSession();
+        session.beginTransaction();
+        
+        // 部门对象
+        Dept dept = new Dept();
+        dept.setDeptName("综合部");
+        // 员工对象
+        Employee emp_zs = new Employee();
+        emp_zs.setEmpName("张三");
+        Employee emp_ls = new Employee();
+        emp_ls.setEmpName("李四");
+        
+        // 关系
+        emp_zs.setDept(dept);
+        emp_ls.setDept(dept);
+        
+        
+        // 保存
+        session.save(dept); // 先保存一的方法
+        session.save(emp_zs);
+        session.save(emp_ls);// 再保存多的一方，关系回自动维护(映射配置完)
+        
+        session.getTransaction().commit();
+        session.close();
+    }
+}
+#+END_SRC
+*** App_hql.java
+#+BEGIN_SRC java
+package cn.atcast.b_query;
+import java.util.List;
+import org.hibernate.Query;
+import org.hibernate.SessionFactory;
+import org.hibernate.Transaction;
+import org.hibernate.cfg.Configuration;
+import org.hibernate.classic.Session;
+import org.hibernate.criterion.DetachedCriteria;
+import org.hibernate.criterion.Restrictions;
+import org.junit.Test;
+
+public class App_hql {
+    
+    private static SessionFactory sf;
+    static {
+        sf = new Configuration()
+            .configure()
+            .addClass(Dept.class)   
+            .addClass(Employee.class)   // 测试时候使用
+            .buildSessionFactory();
+    }
+
+    /* 
+     * 1)   Get/load主键查询
+        2)  对象导航查询
+        3)  HQL查询，  Hibernate Query language  hibernate 提供的面向对象的查询语言。
+        4)  Criteria 查询，   完全面向对象的查询（Query By Criteria  ,QBC）
+        5)  SQLQuery， 本地SQL查询
+     */
+
+    @Test
+    public void all() {
+        Session session = sf.openSession();
+        session.beginTransaction();
+        //1) 主键查询 (此时不能在hibernate.cfg.xml中开启二级缓存的配置，因为开启后会先在二级缓存中找，而不会去数据库中取)
+        //Dept dept =  (Dept) session.get(Dept.class, 1);
+        //Dept dept =  (Dept) session.load(Dept.class, 1);
+        
+        //2) 对象导航查询
+//      Dept dept =  (Dept) session.get(Dept.class, 1);
+//      System.out.println(dept.getDeptName());
+//      System.out.println(dept.getEmps());
+        
+        // 3)   HQL查询
+        // 注意：使用hql查询的时候 auto-import="true" 要设置true，默认为true
+        //  如果是false，写hql的时候，要指定类的全名
+//      Query q = session.createQuery("from Dept");
+//      System.out.println(q.list());
+        
+        // a. 查询全部列
+        //Query q = session.createQuery("from Dept");  //OK
+        //Query q = session.createQuery("select * from Dept");  //NOK, 错误，不支持*
+//      Query q = session.createQuery("select d from Dept d");  // OK d是Dept的别名
+//      System.out.println(q.list());
+
+        // b. 查询指定的列  【返回对象数据Object[] 】
+        //加入断点测试，可以选中q.list()后用watch,在Expressions面板中查看。
+        Query q = session.createQuery("select d.deptId,d.deptName from Dept d");  
+        System.out.println(q.list());
+        
+        // c. 查询指定的列, 自动封装为对象  【必须要提供带参数构造器】
+//      Query q = session.createQuery("select new Dept(d.deptId,d.deptName) from Dept d");  
+//      System.out.println(q.list());
+        
+        // d. 条件查询: 一个条件/多个条件and or/between and/模糊查询
+        // 条件查询： 占位符
+        //Query q = session.createQuery("from Dept d where deptName=?");
+        //两种方法
+        //q.setString(0, "综合部");
+        //q.setParameter(0, "综合部");
+        //System.out.println(q.list());
+        
+        // 条件查询： 命名参数
+//      Query q = session.createQuery("from Dept d where deptId=:myId or deptName=:name");
+//      q.setParameter("myId", 1);
+//      q.setParameter("name", "综合部");
+//      System.out.println(q.list());
+        
+        // 范围
+//      Query q = session.createQuery("from Dept d where deptId between ? and ?");
+//      q.setParameter(0, 1);
+//      q.setParameter(1, 3);
+//      System.out.println(q.list());
+        
+        // 模糊
+//      Query q = session.createQuery("from Dept d where deptName like ?");
+//      q.setString(0, "%部%");
+//      System.out.println(q.list());
+
+        // e. 聚合函数统计
+        //select count(*) from t_Dept 统计总记录 会统计null
+        //select count(1) from t_Dept 统计总记录,效率更高。会统计null
+        //select count(deptName) from t_Dept 忽略null值,聚合函数统计都会忽略null值
+//      Query q = session.createQuery("select count(*) from Dept");
+//      Long num = (Long) q.uniqueResult();
+//      System.out.println(num);
+        
+        // f. 分组查询
+        //-- 统计t_employee表中，每个部门的人数
+        //数据库写法：SELECT dept_id,COUNT(*) FROM t_employee GROUP BY dept_id;
+        // HQL写法
+        //Query q = session.createQuery("select e.dept, count(*) from Employee e group by e.dept");
+//      Query q = session.createQuery("select e.dept, count(*) from Employee e group by e.dept having count(*)>1");
+//      //加入断点测试，可以选中q.list()后用watch,在Expressions面板中查看。
+//      System.out.println(q.list());
+        
+//      session.getTransaction().commit();
+//      session.close();
+    }
+    
+    // g. 连接查询
+    @Test
+    public void join() {
+        
+        Session session = sf.openSession();
+        session.beginTransaction();
+        /*
+        //1) 内连接   【映射已经配置好了关系，关联的时候，直接写对象的属性即可】
+        /* 需求:显示员工名称，薪水，部门
+         * sql方法一：
+         *  select e.empName,e.salary,d.deptName from t_dept d, t_employee e 
+            where d.deptId=e.dept_id;
+            sql方法二：
+            select e.empName,e.salary,d.deptName from t_dept d inner join t_employee e 
+            on d.deptId=e.dept_id;
+         */
+        /*
+            Query q = session.createQuery("from Dept d inner join d.emps");
+            q.list();
+        //加入断点，watch-->数组中第一个元素是Dept,第二个元素是Employee
+        List<Object[]> list=q.list();
+        for(int i=0;i<list.size();i++){
+            Object[] obj=list.get(0);
+            Dept dep=(Dept)obj[0];
+            System.out.println(dep.getDeptName());
+        }
+         */
+        //2) 左外连接(解除主外键约束条件，在部门表加一个没有员工的新部门，在员工表加一个没有部门的新员工进行测试)
+        /* 需求:显示部门，以及部门下的员工，如果部门下没有员工用null表示 （始终显示左表t_dept信息，）
+         * select e.empName,e.salary,d.deptName from t_dept d left join t_employee e 
+           on d.deptId=e.dept_id;
+           select e.empName,e.salary,d.deptName from t_employee e left join t_dept d 
+           on d.deptId=e.dept_id;
+         */
+        // 查询出来的每一项为 object[]数组，左表存在object[0]中，右表存在object[1]中
+        Query q = session.createQuery("from Dept d left join d.emps"); //左表为dept部门表，将部门表中的信息全保留。
+        //Query q = session.createQuery("from Employee e left join e.dept"); //左表为employee员工表，将员工表中的信息全保留。
+        q.list();
+        //3) 右外连接
+        /* 始终显示right join后面表的数据
+         * select e.empName,e.salary,d.deptName from t_employee e  right join t_dept d 
+            on d.deptId=e.dept_id;
+         */
+//      Query q = session.createQuery("from Employee e right join e.dept");
+//      q.list();
+        
+        session.getTransaction().commit();
+        session.close();
+    }
+    /*
+     内连接和迫切内连接的区别:
+            * 内连接:发送就是内连接的语句,封装的时候将每条记录封装到一个Object[]数组中,最后得到一个List<Object[]>.
+            * 迫切内连接：发送的也是内连接的语句,在join后添加一个fetch关键字,Hibernate会将每条数据封装到对象中,最后List<Customer>. 需要去掉重复值.
+    */
+    // g. 连接查询 - 迫切连接
+    /* Employee.hbm.xml
+     * <many-to-one name="dept" column="dept_id" class="Dept" fetch="select/join"></many-to-one>
+     * fetch="select",另外发送一条select语句抓取当前对象关联实体或集合
+       fetch="join",hibernate会通过select语句使用外连接来加载其关联实体或集合
+        此时lazy会失效
+     */
+    @Test
+    public void fetch() {
+        Session session = sf.openSession();
+        session.beginTransaction();
+        //1)fetch抓取策略
+//      Employee employee = (Employee)session.load(Employee.class, 1);
+//      System.out.println("Employee.empName=" + employee.getEmpName());
+        //另外发送一条select语句抓取当前对象关联实体或集合
+        //System.out.println("Dept.name=" + employee.getDept().getDeptName());
+    
+        
+        //2)  //迫切外连接,则是表示在做连接的同时，对于关联的表的对象也一并取出，进行初始化。 
+        //迫切左外连接(使用fetch, 会把右表employee的数据，填充到左表dept对象中)
+        Query q2 = session.createQuery("from Dept d left join fetch d.emps");//左表为dept部门表，将部门表中的信息全保留。
+        q2.list();
+        //3) 迫切内连接
+//      Query q1 = session.createQuery("from Dept d inner join fetch d.emps");
+//      q1.list();
+        
+        session.getTransaction().commit();
+        session.close();
+    }
+    
+    // HQL查询优化
+    @Test
+    public void hql_other() {
+        Session session = sf.openSession();
+        session.beginTransaction();
+        // HQL写死
+//      Query q = session.createQuery("from Dept d where deptId < 10 ");
+        
+        // HQL 放到映射文件中（放在那个映射文件都可以，但现在查询的是部门，就放在Dept.hbm.xml中）
+        Query q = session.getNamedQuery("getAllDept");
+        q.setParameter(0, 5);
+        System.out.println(q.list());
+        
+        session.getTransaction().commit();
+        session.close();
+    }
+}
+#+END_SRC
+
+执行左连接时：左表为t_dept保留所有信息。
+#+BEGIN_SRC sql
+select e.empName,e.salary,d.deptName from t_dept d left join t_employee e 
+           on d.deptId=e.dept_id;
+#+END_SRC
+
+数据库：
+
+https://raw.githubusercontent.com/Ynjxsjmh/ynjxsjmh.github.io/master/img/2019/2019-03-16-04-01.png
+
+内存中：查询出来的每一项为 object[]数组，左表存在object[0]中，右表存在object[1]中
+
+#+BEGIN_SRC sql
+Query q = session.createQuery("from Dept d left join d.emps"); //左表为dept部门表，将部门表中的信息全保留。
+#+END_SRC
+
+https://raw.githubusercontent.com/Ynjxsjmh/ynjxsjmh.github.io/master/img/2019/2019-03-16-04-02.png
+
+迫切外连接，则是表示在做连接的同时，对于关联的表的对象也一并取出，进行初始化。
+
+执行迫切左连接时：左表为t_dept保留所有信息。使用fetch, 会把右表employee的数据，填充到左表dept对象中。 elementData[1]中的emps为空
+
+https://raw.githubusercontent.com/Ynjxsjmh/ynjxsjmh.github.io/master/img/2019/2019-03-16-04-03.png
+
+** Criteria 查询
+*** App_criteria.java
+#+BEGIN_SRC java
+package cn.atcast.b_query;
+import java.util.List;
+import org.hibernate.Criteria;
+import org.hibernate.Query;
+import org.hibernate.SQLQuery;
+import org.hibernate.SessionFactory;
+import org.hibernate.cfg.Configuration;
+import org.hibernate.classic.Session;
+import org.hibernate.criterion.Restrictions;
+import org.junit.Test;
+
+public class App_criteria {
+    private static SessionFactory sf;
+    static {
+sf = new Configuration()
+            .configure()
+            .addClass(Dept.class)   
+            .addClass(Employee.class)   // 测试时候使用
+            .buildSessionFactory();
+    }
+    @Test
+    public void criteria() {    
+        Session session = sf.openSession();
+        session.beginTransaction();
+    
+        Criteria criteria = session.createCriteria(Employee.class);
+        // 构建条件
+        criteria.add(Restrictions.eq("empId", 1));
+        //criteria.add(Restrictions.idEq(1));  // 主键查询
+        
+        System.out.println(criteria.list());
+        session.getTransaction().commit();
+        session.close();
+    }
+    // 5)   SQLQuery， 本地SQL查询
+    // 不能跨数据库平台： 如果改了数据库，sql语句有肯能要改。
+    @Test
+    public void sql() {
+        Session session = sf.openSession();
+        session.beginTransaction();
+        
+        SQLQuery q = session.createSQLQuery("SELECT * FROM t_Dept limit 3;")
+            .addEntity(Dept.class);  // 也可以自动封装
+          Dept dept= (Dept)q.list().get(0);
+         System.out.println( dept.getDeptName());
+        
+        session.getTransaction().commit();
+        session.close();
+    }
+}
+#+END_SRC
+
+*** 离线查询
+
+https://raw.githubusercontent.com/Ynjxsjmh/ynjxsjmh.github.io/master/img/2019/2019-03-16-04-04.png
+
+#+BEGIN_SRC java
+    /*
+    一般我们进行web开发都会碰到多条件查询。例如根据条件搜索。条件的多少 逻辑关系 是or 还是and等等。我们要根据这些条件来拼写查询语句。
+    但是有了离线查询这些都不是问题，我们可以使用DetachedCriteria来构造查询条件，然后将这个DetachedCriteria作为方法调用参数传递给业务层对象。
+    而业务层对象获得DetachedCriteria之后，可以在session范围内直接构造Criteria，进行查询。
+    就此，查询语句的构造完全被搬离到web层实现，而业务层则只负责完成持久化和查询的封装即可。
+    换句话说，业务层代码是不变化的。我们不必为了查询条件的变化而去频繁改动查询语句了。。
+    */
+    
+    @Test
+    /**
+     * 离线条件查询:DetachedCriteria(SSH整合经常使用.).
+     * * 可以脱离session设置参数.
+     */
+    public void detached(){
+        // 获得一个离线条件查询的对象
+        DetachedCriteria detachedCriteria = DetachedCriteria.forClass(Employee.class);
+        detachedCriteria.add(Restrictions.eq("empName","张三"));
+        
+        Session session = sf.openSession();
+        Transaction tx = session.beginTransaction();
+        
+        List<Employee> list = detachedCriteria.getExecutableCriteria(session).list();// 离线条件查询对象与session绑定.
+        for (Employee employee : list) {
+            System.out.println(employee.getEmpName());
+        }
+        tx.commit();
+        session.close();
+    }
+}
+#+END_SRC
+** 分页查询
+App_page.java
+#+BEGIN_SRC java
+package cn.atcast.b_query;
+import java.util.List;
+import org.hibernate.Criteria;
+import org.hibernate.Query;
+import org.hibernate.ScrollableResults;
+import org.hibernate.SessionFactory;
+import org.hibernate.cfg.Configuration;
+import org.hibernate.classic.Session;
+import org.junit.Test;
+import com.mchange.v2.c3p0.ComboPooledDataSource;
+
+public class App_page {
+    
+    private static SessionFactory sf;
+    static {
+        sf = new Configuration()
+            .configure()
+            .addClass(Dept.class)   
+            .addClass(Employee.class)   // 测试时候使用
+            .buildSessionFactory();
+    }
+    // 分页查询
+    @Test
+    public void all() {
+        Session session = sf.openSession();
+        session.beginTransaction();
+        
+         Query q = session.createQuery("from Employee");
+         
+         ScrollableResults scroll = q.scroll();  // 得到滚动的结果集,开始时指向第0行
+         scroll.last();                         //  滚动到最后一行
+         int totalCount = scroll.getRowNumber() + 1;// 得到滚到的记录数，即总记录数
+         
+         // 设置分页参数
+         q.setFirstResult(0);
+         q.setMaxResults(2);
+         
+         // 查询
+         System.out.println(q.list());
+         System.out.println("总记录数：" + totalCount);
+        
+        session.getTransaction().commit();
+        session.close();
+    }
+}
+#+END_SRC
+
+* 缓存
+** 缓存的作用
+为什么要用缓存？
+目的：减少对数据库的访问次数！从而提升hibernate的执行效率！
+
+Hibernate中缓存分类：
+- 一级缓存
+- 二级缓存
+
+概念
+1. Hibenate中一级缓存，也叫做session的缓存，它可以在session范围内减少数据库的访问次数！  只在session范围有效！ Session关闭，一级缓存失效！
+2. 当调用session的save/saveOrUpdate/get/load/list/iterator方法的时候，都会把对象放入session的缓存中。 
+3. Session的缓存由hibernate维护， 用户不能操作缓存内容； 如果想操作缓存内容，必须通过hibernate提供的evit/clear方法操作。
+
+特点：
+- 只在(当前)session范围有效，作用时间短，效果不是特别明显！
+- 在短时间内多次操作数据库，效果比较明显！
+
+缓存相关几个方法的作用
+
+| session.flush();     | 让一级缓存与数据库同步       |
+| session.evict(arg0); | 清空一级缓存中指定的对象     |
+| session.clear();     | 清空一级缓存中缓存的所有对象 |
+
+在什么情况用上面方法？
+批量操作使用使用：
+- Session.flush();   // 先与数据库同步
+- Session.clear();   // 再清空一级缓存内容
+
+不同的session是否会共享缓存数据?
+Session是一级缓存，不会共享数据
+
+list与iterator查询的区别？
+- list() 
+     - 一次把所有的记录都查询出来，
+     - 会放入缓存，但不会从缓存中获取数据
+- Iterator
+     - N+1查询； N表示所有的记录总数
+     - 即会先发送一条语句查询所有记录的主键（1），
+     - 再根据每一个主键再去数据库查询（N）！
+     - 会放入缓存，也会从缓存中取数据！     
+     - (做查询的时候iterate()会先到数据库中把id都取出来，然后真正要遍历某个对象的时候先到缓存中找,如果找不到,以id为条件再发一条sql到数据库,这样如果缓存中没有数据,则再查询数据库)
+** 二级缓存配置
+*** 二级缓存
+Hibernate提供了基于应用程序级别(对整个应用程序都有效)的缓存，可以跨多个session，即不同的session都可以访问缓存数据。 这个缓存也叫二级缓存。
+    Hibernate提供的二级缓存有默认的实现，且是一种可插配的缓存框架！如果用户想用二级缓存，只需要在hibernate.cfg.xml中配置即可；不想用，直接移除，不影响代码。
+
+如果用户觉得hibernate提供的框架框架不好用，自己可以换其他的缓存框架或自己实现缓存框架都可以。
+
+*** 使用二级缓存
+查看hibernate.properties配置文件，二级缓存如何配置？
+
+#+BEGIN_SRC nxml
+##########################
+### Second-level Cache ###
+##########################
+#hibernate.cache.use_second_level_cache false【二级缓存默认不开启，需要手动开启】
+#hibernate.cache.use_query_cache true      【开启查询缓存】
+
+## choose a cache implementation        【二级缓存框架的实现】
+#hibernate.cache.provider_class org.hibernate.cache.EhCacheProvider
+#hibernate.cache.provider_class org.hibernate.cache.EmptyCacheProvider
+hibernate.cache.provider_class org.hibernate.cache.HashtableCacheProvider 默认实现
+#hibernate.cache.provider_class org.hibernate.cache.TreeCacheProvider
+#hibernate.cache.provider_class org.hibernate.cache.OSCacheProvider
+#hibernate.cache.provider_class org.hibernate.cache.SwarmCacheProvider
+#+END_SRC
+
+*** 二级缓存，使用步骤
+1. 开启二级缓存
+2. 指定缓存框架
+3. 指定那些类加入二级缓存
+4. 测试二级缓存！
+
+*** 缓存策略
+
+| <class-cache usage="read-only"/>            | 放入二级缓存的对象，只读              |
+| <class-cache usage="nonstrict-read-write"/> | 非严格的读写                          |
+| <class-cache usage="read-write"/>           | 读写； 放入二级缓存的对象可以读、写   |
+| <class-cache usage="transactional"/>        | (基于事务的策略,hibernate3.6不支持)   |
+
+*** hibernate.cfg.xml
+#+BEGIN_SRC nxml
+    <!--****************** 【二级缓存配置】****************** --> 
+        <!-- a.  开启二级缓存 -->
+        <property name="hibernate.cache.use_second_level_cache">true</property>
+        <!-- b. 指定使用哪一个缓存框架(默认提供的) -->
+        <property name="hibernate.cache.provider_class">org.hibernate.cache.HashtableCacheProvider</property>
+        <!-- 开启查询缓存 -->
+        <property name="hibernate.cache.use_query_cache">true</property>
+        <!-- c. 指定哪一些类，需要加入二级缓存 -->
+        <class-cache usage="read-write" class="cn.atcast.b_second_cache.Dept"/>
+        <class-cache usage="read-only" class="cn.atcast.b_second_cache.Employee"/>
+        <!-- 集合缓存[集合缓存的元素对象，也加加入二级缓存] -->
+        <collection-cache usage="read-write" collection="cn.atcast.b_second_cache.Dept.emps"/>
+#+END_SRC
+
+*** App.java
+#+BEGIN_SRC java
+package cn.atcast.c_second_cache;
+
+import java.util.Iterator;
+import java.util.Set;
+
+import org.hibernate.Query;
+import org.hibernate.SessionFactory;
+import org.hibernate.cfg.Configuration;
+import org.hibernate.classic.Session;
+import org.junit.Test;
+
+public class App {
+    
+    private static SessionFactory sf;
+    static {
+        sf = new Configuration()
+            .configure()
+            .addClass(Dept.class)   
+            .addClass(Employee.class)  
+            .buildSessionFactory();
+    }
+    @Test
+    public void testCache() {
+        Session session1 = sf.openSession();
+        session1.beginTransaction();
+        //将dept放入一级缓存（默认),同时也放入到二级缓存
+        Dept dept=(Dept)session1.get(Dept.class, 1);
+        //dept.getEmps().size();
+        Set emps=dept.getEmps();
+        Iterator its=emps.iterator();
+        while(its.hasNext()){
+             System.out.println(its.next());
+        }
+        System.out.println("--------------------------------");
+        Session session2 = sf.openSession();
+        session2.beginTransaction();
+        Dept dept2=(Dept)session2.get(Dept.class, 1);
+        Set emps2=dept2.getEmps();
+        Iterator its2=emps2.iterator();
+        while(its2.hasNext()){
+             System.out.println(its2.next());
+        }
+        //dept2.setDeptName("销售部");
+        session2.getTransaction().commit();
+    }
+    
+    @Test
+    public void listCache() {
+         
+        Session session1=sf.openSession();
+        session1.beginTransaction();
+        Query q=session1.createQuery("from Employee").setCacheable(true);
+        System.out.println(q.list());
+        session1.getTransaction().commit();
+        session1.close();
+        
+        System.out.println("---------------------------");
+        Session session2=sf.openSession();
+        session2.beginTransaction();
+        Query q2=session2.createQuery("from Employee").setCacheable(true);
+        System.out.println(q2.list());
+        session2.getTransaction().commit();
+        session2.close();
+    }
+}
+#+END_SRC
+
+** ThreadLocal
+ThreadLocal类提供了线程局部 (thread-local) 变量。是一个线程级别的局部变量，并非“本地线程”。
+
+thread local variable(线程局部变量)。也许把它命名为ThreadLocalVar更加合适。线程局部变量(ThreadLocal)其实的功用非常简单，就是为每一个使用该变量的线程都提供一个变量值的副本，使每一个线程都可以独立地改变自己的副本，而不会和其它线程的副本冲突。从线程的角度看，就好像每一个线程都完全拥有一个该变量。
+
+应用场景:用ThreadLocal 来管理 Hibernate Session
+
+我们知道Session是由SessionFactory负责创建的，而SessionFactory的实现是线程安全的，多个并发的线程可以同时访问一个SessionFactory并从中获取Session实例，那么Session是否是线程安全的呢？很遗憾，答案是否定的。Session中包含了数据库操作相关的状态信息，那么说如果多个线程同时使用一个Session实例进行CRUD，就很有可能导致数据存取的混乱
+
+#+BEGIN_SRC java
+// 使用ThreadLocal集合保存当前业务线程中的SESSION
+private static ThreadLocal session = new ThreadLocal();
+#+END_SRC
+
+https://raw.githubusercontent.com/Ynjxsjmh/ynjxsjmh.github.io/master/img/2019/2019-03-16-04-05.png
+
+** Open session in view
+在hibernate中使用load方法时，并未把数据真正获取时就关闭了session，当我们真正想获取数据时会迫使load加载数据，而此时session已关闭，所以就会出现异常。比较典型的是在MVC模式中，我们在M层调用持久层获取数据时(持久层用的是load方法加载数据)，当这一调用结束时，session随之关闭，而我们希望在V层使用这些数据，这时才会迫使load加载数据，我们就希望这时的session是open着得，这就是所谓的Open Session In view 。OpenSessionInViewFilter [全名：org.springframework.orm.hibernate3.support.OpenSessionInViewFilter]是Spring提供的一个针对Hibernate的一个支持类，其主要意思是在发起一个页面请求时打开Hibernate的Session，一直保持这个Session，直到这个请求结束，具体是通过一个Filter来实现的。
+
+由于Hibernate引入了Lazy Load特性，使得脱离Hibernate的Session周期的对象如果再想通过getter方法取到其关联对象的值，Hibernate会抛出一个LazyLoad的Exception。所以为了解决这个问题，Spring引入了这个Filter，使得Hibernate的Session的生命周期变长。
+
+有两种方式可以配置实现OpenSessionInView，分别是OpenSessionInViewInterceptor和OpenSessionInViewFilter，功能完全相同，只不过一个在web.xml配置，另一个在application.xml配置而已。倾向配置在application.xml里，因为web.xml里配置的东西的太多的话容易发生冲突，虽然可以调整，但是毕竟多了个麻烦。
+
+本章源码见 =HibernateCRMHqlQbc=
+
+另 =HibernateCRMReference= 是一个完整的 Hibernate 项目实现代码。

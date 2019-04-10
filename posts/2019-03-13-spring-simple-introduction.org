@@ -1,0 +1,57 @@
+#+OPTIONS: ':nil *:t -:t ::t <:t H:5 \n:nil ^:{} arch:headline
+#+OPTIONS: author:t broken-links:nil c:nil creator:nil
+#+OPTIONS: d:(not "LOGBOOK") date:t e:t email:nil f:t inline:t num:t
+#+OPTIONS: p:nil pri:nil prop:nil stat:t tags:t tasks:t tex:t
+#+OPTIONS: timestamp:t title:t toc:t todo:t |:t
+#+TITLE: 十、Spring 框架的概述
+#+DATE: <2019-03-12 Tue>
+#+AUTHOR: Ynjxsjmh
+#+EMAIL: ynjxsjmh@gmail.com
+#+FILETAGS: ::
+
+* 学习内容
+1. Spring框架的概述
+2. Spring的快速入门
+3. Spring创建对象方式
+4. 对象依赖关系
+5. Spring与Strtus整合
+
+* 对象的创建
+在引入 Spring 之前，我们可能会自己手动维护对象之间的关系。比如一个对象中包含另一个对象，我们会先把这个对象和其中的对象创建出来，然后再通过 set 方法设置其中的对象。
+
+进而我们可以使用工厂模式帮我们创建其中的对象，不再自己手动 new 了。
+
+现在使用 Spring 我们只要告诉 Spring 我们要什么对象对可以了，Spring 会自动传回我们需要的对象并且处理好其依赖关系。
+
+* Spring框架的概述
+** 什么是Spring（Spring 负责所有对象的创建）
+Spring是一个开源框架，Spring是于2003 年兴起的一个轻量级的Java 开发框架，由Rod Johnson 在其著作Expert One-On-One J2EE Development and Design中阐述的部分理念和原型衍生而来。它是为了解决企业应用开发的复杂性而创建的。框架的主要优势之一就是其分层架构，分层架构允许使用者选择使用哪一个组件，同时为 J2EE 应用程序开发提供集成的框架。Spring使用基本的JavaBean来完成以前只可能由EJB完成的事情。然而，Spring的用途不仅限于服务器端的开发。从简单性、可测试性和松耦合的角度而言，任何Java应用都可以从Spring中受益。Spring的核心是控制反转（IoC）和面向切面（AOP）。简单来说，Spring是一个分层的JavaSE/EEfull-stack(一站式) 轻量级开源框架。
+
+** Spring提供了一站式解决方案
+1. =Spring Core=  spring的核心功能： IOC容器, 解决对象创建及依赖关系
+涉及到的变化比较大的两个地方：
+- Hibernate 的数据源的生成
+- Struts 的反射创建对象
+这两个地方对象的创建都给 Spring 来做
+2. =Spring Web= Spring对web模块的支持。
+    		   - 可以与struts整合,让struts的action创建交给spring
+    		   - spring mvc模式
+3. =Spring DAO= Spring 对jdbc操作的支持  【JdbcTemplate模板工具类】
+4. =Spring ORM= spring对orm的支持： 
+    	    	- 既可以与hibernate整合，【session】
+    		    - 也可以使用spring的对hibernate操作的封装
+5. =Spring AOP= 切面编程（将所有关注点提取出来，形成切面类，交给代理），由代理来处理程序员不想做但又不得不做的事。比如事务操作、日志记录和权限管理等。
+6. =Spring JEE=  spring 对javaEE其他模块的支持(EJB)
+
+** 控制反转和依赖注入
+- 控制反转 IOC(Inversion on Control ): 对象的创建交给外部容器完成即控制反转（把原来程序员做的事交给 Spring 来做）
+- 依赖注入 DI(dependency injection): 处理对象之间的依赖关系
+
+**区别** 
+- 控制反转，解决对象创建的问题 【对象创建交给别人】
+- 依赖注入，在创建完对象后，对象关系的处理就是依赖注入 【通过set方法依赖注入】
+
+** 面向切面编程AOP
+切面，简单来说来可以理解为一个类，由很多重复性代码形成的类。
+
+切面举例：事务、日志、权限（每个action中需要做用户是否登陆的判断，这些重复代码就可以做成一个类，形成切面。）;

@@ -1,0 +1,462 @@
+#+OPTIONS: ':nil *:t -:t ::t <:t H:5 \n:nil ^:{} arch:headline
+#+OPTIONS: author:t broken-links:nil c:nil creator:nil
+#+OPTIONS: d:(not "LOGBOOK") date:t e:t email:nil f:t inline:t num:t
+#+OPTIONS: p:nil pri:nil prop:nil stat:t tags:t tasks:t tex:t
+#+OPTIONS: timestamp:t title:t toc:t todo:t |:t
+#+TITLE: 七、Structs2 客户登录之项目实现
+#+DATE: <2019-03-12 Tue>
+#+AUTHOR: Ynjxsjmh
+#+EMAIL: ynjxsjmh@gmail.com
+#+FILETAGS: ::
+
+* 需求
+CRM系统中需要有登录的功能
+
+本功能要实现用户的登录，页面如下：
+
+https://raw.githubusercontent.com/Ynjxsjmh/ynjxsjmh.github.io/master/img/2019/2019-03-12-02-01.png
+
+
+项目文件概览：
+
+https://raw.githubusercontent.com/Ynjxsjmh/ynjxsjmh.github.io/master/img/2019/2019-03-12-02-02.png
+
+* 创建web项目，引入struts - jar包
+
+https://raw.githubusercontent.com/Ynjxsjmh/ynjxsjmh.github.io/master/img/2019/2019-03-12-02-03.png
+
+| commons-fileupload-1.2.2.jar | 【文件上传相关包】              |
+| commons-io-2.0.1.jar         | 【io流包】                      |
+| *struts2-core-2.3.4.1.jar*   | 【struts2核心功能包】           |
+| *xwork-core-2.3.4.1.jar*     | 【Xwork核心包】                 |
+| ognl-3.0.5.jar               | 【Ognl表达式功能支持表】        |
+| commons-lang3-3.1.jar        | 【struts对java.lang包的扩展】   |
+| freemarker-2.3.19.jar        | 【struts的标签模板库jar文件】   |
+| javassist-3.11.0.GA.jar      | 【struts对字节码的处理相关jar】 |
+
+* 创建表
+sys_user
+#+BEGIN_SRC sql
+CREATE TABLE `sys_user` (
+  `uid` bigint(20) NOT NULL AUTO_INCREMENT,
+  `username` varchar(255) DEFAULT NULL,
+  `password` varchar(255) DEFAULT NULL,
+  `name` varchar(255) DEFAULT NULL,
+  PRIMARY KEY (`uid`)
+) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8;
+#+END_SRC
+
+* Hibernate配置文件
+hibernate.cfg.xml
+#+BEGIN_SRC nxml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE hibernate-configuration PUBLIC
+    "-//Hibernate/Hibernate Configuration DTD 3.0//EN"
+    "http://www.hibernate.org/dtd/hibernate-configuration-3.0.dtd">
+<hibernate-configuration>
+    <!-- 记住：先配置SessionFactory标签，一个数据库对应一个SessionFactory标签 -->
+    <session-factory>
+        <!-- 必须要配置的参数有5个，4大参数，数据库的方言 -->
+        <property name="hibernate.connection.driver_class">com.mysql.jdbc.Driver</property>
+        <property name="hibernate.connection.url">jdbc:mysql:///strutscrm</property>
+        <property name="hibernate.connection.username">root</property>
+        <property name="hibernate.connection.password">root</property>
+        <!-- 数据库的方言 -->
+        <property name="hibernate.dialect">org.hibernate.dialect.MySQLDialect</property>
+        <!-- 可选配置 -->
+        <!-- 显示SQL语句，在控制台显示 -->
+        <property name="hibernate.show_sql">true</property>
+        <!-- 格式化SQL语句 -->
+        <property name="hibernate.format_sql">true</property>
+        <!-- 生成数据库的表结构 
+update：如果没有表结构，创建表结构。如果存在，不会创建，添加数据
+        -->
+        <property name="hibernate.hbm2ddl.auto">update</property>
+        <!-- 开启绑定本地的session -->
+        <property name="hibernate.current_session_context_class">thread</property>
+        <!-- 映射配置文件，需要引入映射的配置文件 -->
+        <mapping resource="com/atcast/domain/User.hbm.xml"/>
+    </session-factory>
+</hibernate-configuration>  
+#+END_SRC
+
+* Hibernate工具类
+  上个项目我们使用的是 openSession()，这里我们使用的是 getCurrentSession()。更推荐 getCurrentSession()。
+
+HibernateUtils.java
+#+BEGIN_SRC java
+package com.atcast.utils;
+
+import org.hibernate.Session;
+import org.hibernate.SessionFactory;
+import org.hibernate.cfg.Configuration;
+/**
+ * Hibernate框架的工具类
+ * @author Administrator
+ */
+public class HibernateUtils {
+    // ctrl + shift + x
+    private static final Configuration CONFIG;
+    private static final SessionFactory FACTORY;
+    // 编写静态代码块
+    static{
+        // 加载XML的配置文件
+        CONFIG = new Configuration().configure();
+        // 构造工厂
+        FACTORY = CONFIG.buildSessionFactory();
+    }
+    /**
+     * 从工厂中获取Session对象
+     * @return
+     */
+    public static Session getSession(){
+        return FACTORY.openSession();
+    }
+    /**
+     * // 从ThreadLocal类中获取到session的对象
+     * @return
+     */
+    public static Session getCurrentSession(){
+        return FACTORY.getCurrentSession();
+    }
+    public static void main(String[] args) {
+        // 调用获取session的方法
+        getSession();
+    }
+}
+#+END_SRC
+
+* 用户实体对象及映射文件
+User.java
+#+BEGIN_SRC java
+package com.atcast.domain;
+public class User {
+    private Long uid;
+    // 登录名称
+    private String username;
+    private String password;
+    // 真实名称
+    private String name;
+    public Long getUid() {
+        return uid;
+    }
+    public void setUid(Long uid) {
+        this.uid = uid;
+    }
+    public String getUsername() {
+        return username;
+    }
+    public void setUsername(String username) {
+        this.username = username;
+    }
+    public String getPassword() {
+        return password;
+    }
+    public void setPassword(String password) {
+        this.password = password;
+    }
+    public String getName() {
+        return name;
+    }
+    public void setName(String name) {
+        this.name = name;
+    }
+}
+#+END_SRC
+
+User.hbm.xml
+#+BEGIN_SRC nxml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE hibernate-mapping PUBLIC 
+    "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+    "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
+<hibernate-mapping>
+    <class name="com.atcast.domain.User" table="sys_user">
+        <id name="uid" column="uid">
+            <generator class="native"/>
+        </id>
+        <property name="username" column="username"/>
+        <property name="password" column="password"/>
+        <property name="name" column="name"/>
+    </class>
+</hibernate-mapping>    
+#+END_SRC
+
+* 用户的DAO层
+下面这样写不是很规范，最好每个层都有一个接口。
+
+方法 findByNameAndPwd() 返回 User 对象的原因是用户登录后会在其他页面显示登录用户的用户名，此时返回的 User 对象可以通过 =request.setAttribute("user", user);= 来保存该对象。
+
+UserDao.java
+#+BEGIN_SRC java
+package com.atcast.dao;
+import java.util.List;
+import org.hibernate.Query;
+import org.hibernate.Session;
+import com.atcast.domain.User;
+import com.atcast.utils.HibernateUtils;
+/**
+ * 持久层（面向接口开发）
+ * @author Administrator
+ */
+public class UserDao {
+    /**
+     * 通过用户名和密码查询数据库
+     * @param user
+     * @return
+     */
+    public User findByNameAndPwd(User user){
+        // 先获取
+        Session session = HibernateUtils.getCurrentSession();
+        // 使用用户名和密码进行查询
+        /* sql->hql
+         * select * from sys_user WHERE username = and password =
+         */
+        Query query = session.createQuery("from User where username = ? and password = ?");
+        // 设置参数
+        query.setParameter(0, user.getUsername());
+        query.setParameter(1, user.getPassword());
+        // 查询
+        List<User> list = query.list();
+        // 有数据
+        if(list.size() > 0){
+            return list.get(0);
+        }
+        return null;
+    }
+}
+#+END_SRC
+
+* 用户的业务层
+这里做测试如果出现如下错误
+
+#+BEGIN_SRC java
+java.lang.NoSuchMethodError: org.junit.runner.Description.getClassName()Ljava/lang/String;
+#+END_SRC
+
+是因为 Eclipse 的版本较高，对单元测试的要求也变了，因此要使用较高版本的 junit.jar（4.9版本的可以）。
+
+getCurrentSession() 是线程局部变量，这样更加安全。因为每个用户的 session 都应该隔离开，某一用户的 session 关闭不能导致另一个用户的退出。因此这里就使用了线程的思想，每个用户访问的时候给一个线程，每个线程绑定一个 session，这样就保证每个用户的 session 都是自己的。
+
+UserService.java
+#+BEGIN_SRC java
+package com.atcast.service;
+import org.hibernate.Session;
+import org.hibernate.Transaction;
+import org.junit.Test;
+import com.atcast.dao.UserDao;
+import com.atcast.domain.User;
+import com.atcast.utils.HibernateUtils;
+/**
+ * 用户的业务层
+ * @author Administrator
+ */
+public class UserService {
+    /**
+     * 处理登录的功能
+     * @param user
+     * @return
+     */
+    public User login(User user){
+        // 使用事务
+        Session session = HibernateUtils.getCurrentSession();
+        Transaction tr = session.beginTransaction();
+        User existUser = null;
+        try {
+            // 调用持久层，查询数据
+            existUser = new UserDao().findByNameAndPwd(user);
+            tr.commit();
+        } catch (Exception e) {
+            tr.rollback();
+            e.printStackTrace();
+        }
+        return existUser;
+    }
+    
+    @Test
+    public void run(){
+        User user = new User();
+        user.setUsername("admin");
+        user.setPassword("123");
+        User existUser = this.login(user);
+        if(existUser != null){
+            System.out.println("登录成功了...");
+        }
+    }
+}
+#+END_SRC
+
+* 用户登录页面
+login.jsp
+#+BEGIN_SRC html
+<FORM id=form1 name=form1 action="${ pageContext.request.contextPath }/user_login.action" method=post target="_parent">
+
+<DIV id=UpdatePanel1>
+<DIV id=div1 
+style="LEFT: 0px; POSITION: absolute; TOP: 0px; BACKGROUND-COLOR: #0066ff"></DIV>
+<DIV id=div2 
+style="LEFT: 0px; POSITION: absolute; TOP: 0px; BACKGROUND-COLOR: #0066ff"></DIV>
+
+<DIV>&nbsp;&nbsp; </DIV>
+<DIV>
+<TABLE cellSpacing=0 cellPadding=0 width=900 align=center border=0>
+  <TBODY>
+  <TR>
+    <TD style="HEIGHT: 105px"><IMG src="images/login_1.gif" 
+  border=0></TD></TR>
+  <TR>
+    <TD background=images/login_2.jpg height=300>
+      <TABLE height=300 cellPadding=0 width=900 border=0>
+        <TBODY>
+        <TR>
+          <TD colSpan=2 height=35></TD></TR>
+        <TR>
+          <TD width=360></TD>
+          <TD>
+            <TABLE cellSpacing=0 cellPadding=2 border=0>
+              <TBODY>
+              <TR>
+               <TD style="HEIGHT: 28px" width=80>登 录 名：</TD>
+          <TD style="HEIGHT: 28px" width=150><INPUT id=txtName 
+                  style="WIDTH: 130px" name="username"></TD>
+                <TD style="HEIGHT: 28px" width=370><SPAN 
+                  id=RequiredFieldValidator3 
+                  style="FONT-WEIGHT: bold; VISIBILITY: hidden; COLOR: white">请输入登录名</SPAN></TD></TR>
+              <TR>
+                <TD style="HEIGHT: 28px">登录密码：</TD>
+                <TD style="HEIGHT: 28px"><INPUT id=txtPwd style="WIDTH: 130px" 
+                  type=password name="password"></TD>
+                <TD style="HEIGHT: 28px"><SPAN id=RequiredFieldValidator4 
+                  style="FONT-WEIGHT: bold; VISIBILITY: hidden; COLOR: white">请输入密码</SPAN></TD></TR>
+              <TR>
+                <TD style="HEIGHT: 18px"></TD>
+                <TD style="HEIGHT: 18px"></TD>
+                <TD style="HEIGHT: 18px"></TD></TR>
+              <TR>
+                <TD></TD>
+                <TD>
+                <INPUT id=btn 
+                  style="BORDER-TOP-WIDTH: 0px; BORDER-LEFT-WIDTH: 0px; BORDER-BOTTOM-WIDTH: 0px; BORDER-RIGHT-WIDTH: 0px" 
+      type=image src="images/login_button.gif" name=btn>                  </TD></TR></TBODY></TABLE></TD></TR></TBODY></TABLE></TD>
+</TR>
+  <TR>
+    <TD><IMG src="images/login_3.jpg" 
+border=0></TD></TR></TBODY></TABLE></DIV></DIV>
+</FORM>
+</BODY>
+</HTML>
+#+END_SRC
+* web.xml
+项目启动时先加载 web.xml，想要让项目知道我们使用的是 Struts2 框架，我们就得对 web.xml 加入拦截器。
+
+加入拦截器的目的是获取 URL 请求地址，对请求地址进行匹配，看是否需要使用 Struts2 进行处理。
+
+web.xml
+#+BEGIN_SRC nxml
+<?xml version="1.0" encoding="UTF-8"?>
+<web-app xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://java.sun.com/xml/ns/javaee" xsi:schemaLocation="http://java.sun.com/xml/ns/javaee http://java.sun.com/xml/ns/javaee/web-app_2_5.xsd" id="WebApp_ID" version="2.5">
+  <display-name>day32_crm</display-name>
+  <!-- 配置 struts2 核心的过滤器 -->
+  <filter>
+    <filter-name>struts2</filter-name>
+    <filter-class>org.apache.struts2.dispatcher.ng.filter.StrutsPrepareAndExecuteFilter</filter-class>
+  </filter>
+  <filter-mapping>
+    <filter-name>struts2</filter-name>
+    <!-- 匹配所有请求，所有请求都会转发给 struts2 -->
+    <!-- 如果有不匹配的，转发给 HttpServlet 处理 -->
+    <url-pattern>/*</url-pattern>
+  </filter-mapping>
+  
+  <welcome-file-list>
+    <welcome-file>index.jsp</welcome-file>
+  </welcome-file-list>
+</web-app>
+#+END_SRC
+
+* struts2配置文件
+把以前写 Servlet 的过程移到配置文件里来写了。
+
+action 标签的 result 节点是把以前 Servlet 类中的服务器跳转、客户端跳转移到这里来。
+
+如果 UserAction 中有很多方法，我们不可能添加多个 action 标签，因为这样十分麻烦。而我们发现 action 中的 name 一般都对应着 action 中的同名方法，比如 name=user_login 对应着 UserAction 中的 login 方法。
+
+因此我们可以抽取出共性，将 name=user_login 改成通配符形式的 name=user_*，而此时 method 里面我们不再写具体的 UserAction 方法名称，而是写成 {1} 表示 name=user_* 中的第一个 *　代替的内容。
+
+struts.xml
+#+BEGIN_SRC nxml
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE struts PUBLIC
+    "-//Apache Software Foundation//DTD Struts Configuration 2.3//EN"
+    "http://struts.apache.org/dtds/struts-2.3.dtd">
+<struts>
+    <package name="crm" namespace="/" extends="struts-default">
+        <!-- 配置用户的模块 -->
+        <action name="user_*" class="com.atcast.action.UserAction" method="{1}">
+            <result name="login">/login.jsp</result>
+            <result name="success">/index.jsp</result>
+        </action>
+    </package>
+</struts>
+#+END_SRC
+* 用户的控制层 开发 Action
+现在开始控制层就不叫 Servlet 而是叫 Action 了，继承 ActionSupport 是因为这个类给我们提供了很多功能，比如数据的自动封装。
+
+=BeanUtils.populate(user, map);=  这种数据封装方式还可以进行优化，可以使用 Struts2 提供的 ModelDriven
+
+UserAction.java
+#+BEGIN_SRC java
+package com.atcast.action;
+import java.util.Map;
+import javax.servlet.http.HttpServletRequest;
+import org.apache.commons.beanutils.BeanUtils;
+import org.apache.struts2.ServletActionContext;
+import com.atcast.domain.User;
+import com.atcast.service.UserService;
+import com.opensymphony.xwork2.ActionSupport;
+/**
+ * 用户的模块的控制器
+ * @author Administrator
+ */
+public class UserAction extends ActionSupport{
+    private static final long serialVersionUID = 1305643617977647333L;
+    /**
+     * 处理登录功能
+     * @return
+     */
+    public String login(){
+        System.out.println("login");
+        // 这边没有学习功能，封装数据，现在还需要使用request对象
+        // 怎么获取request方式
+        HttpServletRequest request = ServletActionContext.getRequest();
+        // 获取请求参数
+        Map<String, String[]> map = request.getParameterMap();
+        User user = new User();
+        try {
+            //login.jsp页面中的属性一定要和User中的属性名一致
+            BeanUtils.populate(user, map);
+            // 调用业务层
+            User existUser = new UserService().login(user);
+            // 判断
+            if(existUser == null){
+                // 说明，用户名或者密码错误了
+                return LOGIN;
+            }else{
+                // 存入到session中
+request.getSession().setAttribute("existUser", existUser);
+                return SUCCESS;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return NONE;
+    }
+    
+    public String regist(){
+        System.out.println("regist");
+        return "register";
+    }
+}
+#+END_SRC
+
+本章源码见 =Struts2CRM01=

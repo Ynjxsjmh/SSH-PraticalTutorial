@@ -1,0 +1,168 @@
+#+OPTIONS: ':nil *:t -:t ::t <:t H:5 \n:nil ^:{} arch:headline
+#+OPTIONS: author:t broken-links:nil c:nil creator:nil
+#+OPTIONS: d:(not "LOGBOOK") date:t e:t email:nil f:t inline:t num:t
+#+OPTIONS: p:nil pri:nil prop:nil stat:t tags:t tasks:t tex:t
+#+OPTIONS: timestamp:t title:t toc:t todo:t |:t
+#+TITLE: 一、Hibernate 客户管理之知识点
+#+DATE: <2019-03-10 Sun>
+#+AUTHOR: Ynjxsjmh
+#+EMAIL: ynjxsjmh@gmail.com
+#+FILETAGS: ::
+
+* 学习内容
+1. 掌握Hibernate的执行流程
+2. 独立使用Hibernate的完成对客户的CRUD的操作
+
+本章主要做
+
+https://raw.githubusercontent.com/Ynjxsjmh/ynjxsjmh.github.io/master/img/2019/2019-03-10-02-03.png
+
+先实现客户列表，点击客户列表显示所有客户。
+
+用到的技术：
+- JSP + Servlet + JDBC（因为还没学 Structs2，所以写页面还是要用到 JSP + Servlet）
+- 其中 JDBC 使用 Hibernate 框架来代替
+
+MVC 三层架构先从持久层开发，再开发业务层，最后开发控制层。每一层做严格的单元测试。
+
+其实像 SSH 这种框架还是不够完善，每个公司在成长的过程中都会形成自己的一个框架。
+
+* Hibernate
+** 什么是框架
+框架是软件的半成品,已经完成了相应部分的内容了.只需要实现自己业务即可.
+** ORM（对象关系映射）
+- O：面向对象领域的Object（JavaBean对象）
+- R：关系数据库领域的Relational（表的结构）
+- M：映射Mapping（XML的配置文件）
+
+Hibernate使程序员通过操作对象的方式来操作数据库表记录
+
+https://raw.githubusercontent.com/Ynjxsjmh/ynjxsjmh.github.io/master/img/2019/2019-03-10-02-02.png
+
+** Hibernate概念
+Hibernate是一个开放源代码的对象关系映射（ORM）框架，它对JDBC进行了非常轻量  级的对象封装，使得Java程序员可以随心所欲的使用对象编程思维来操纵数据库。 
+
+Hibernate可以应用在任何使用JDBC的场合，既可以在Java的客户端程序使用，也可以 在Servlet/JSP的Web应用中使用。
+
+Hibernate是轻量级JavaEE应用的持久层解决方案，是一个关系数据库ORM框架
+
+** Hibernate的优点
+1. Hibernate对JDBC访问数据库的代码做了封装，大大简化了数据访问层繁琐的重复性代码（使用 JDBC 每个操作前还要连接数据库，定义一些东西，关闭一些东西）
+2. Hibernate是一个基于jdbc的主流持久化框架，是一个优秀的orm实现，它很大程度的简化了dao层编码工作（Hibernate 只是 orm 的一种实现方案，mybatis、JPA 也是一种实现，都提供了比较好的 orm 持久化的功能）
+3. Hibernate的性能非常好，因为它是一个轻量级框架。映射的灵活性很出色。它支持很多关系型数据库，从一对一到多对多的各种复杂关系（一对多是核心）
+
+** hibernate.cfg.xml配置文件
+#+CAPTION: 数据库连接信息
+| hibernate.connection.driver_class | 连接数据库驱动程序 |
+| hibernate.connection.url          | 连接数据库URL      |
+| hibernate.connection.username     | 数据库用户名       |
+| hibernate.connection.password     | 数据库密码         |
+
+
+
+#+CAPTION: 方言  
++----------------------------+-----------------------------------------------------------------------------+
+|    hibernate.dialect       | 操作数据库方言                                                              |
++----------------------------+-----------------------------------------------------------------------------+
+|    hibernate.show_sql      | 显示SQL                                                                     |
++----------------------------+-----------------------------------------------------------------------------+
+|    hibernate.format_sql    | 格式化SQL                                                                   |
++----------------------------+-----------------------------------------------------------------------------+
+|    hibernate.hbm2ddl.auto  | 通过映射转成DDL语句（通过映射文件帮我们生成数据库里的表，但一般不这么用）   |
++---+------------------------+-----------------------------------------------------------------------------+
+|   | create                 | 每次都会重新创建一个新的表（测试的时候）                                    |
+|   | create-drop            | 每次都会创建一个新的表,当执行结束之后,将创建的这个表删除（测试的时候）      |
+|   | update                 | 如果有表使用原来的表。没有表, 创建一个新的表，同时更新表结构                |
+|   | validate               | 如果有表,使用原来的表，同时校验映射文件与表中字段是否一致如果不一致就会报错 |
++---+------------------------+-----------------------------------------------------------------------------+
+
+- 加载映射
+如果是XML方式：<mapping resource="cn/atcast/hibernate/domain/User.hbm.xml" />
+
+** 映射文件配置
+| < class > 标签 | 用来将类与数据库表建立映射关系                   |
+|----------------+--------------------------------------------------|
+| name           | 类的全路径（包名+类名）                          |
+| table          | 表名(如果类名与表名一致,那么table属性也可以省略) |
+| catalog        | 数据库的名称，基本上都会省略不写                 |
+
+
+| < id > 标签 | 用来将类中的属性与表中的主键建立映射，id标签就是用来配置主键的      |
+|---------------+---------------------------------------------------------------------|
+| name          | 类中属性名                                                          |
+| column        | 表中的字段名(如果类中的属性名与表中的字段名一致,那么column可以省略) |
+| length        | 字段的长度（一般不写，在数据库没有表的情况下指定）                  |
+|               | 如果数据库已经创建好了，那么length可以不写                          |
+|               | 如果没有创建好，生成表结构时，length最好指定                        |
+
++--------------------------+-----------------------------------------------------------------------+
+|  &lt;property &gt; 标签  | 用来将类中的普通属性与表中的字段建立映射                              |
++--------------------------+-----------------------------------------------------------------------+
+|    name                  | 类中属性名                                                            |
+|    column                | 表中的字段名(如果类中的属性名与表中的字段名一致，那么column可以省略)  |
+|    length                | 数据长度                                                              |
+|    type                  | 数据类型（一般都不需要编写，如果写需要按着规则来编写）                |
++---+----------------------+-----------------------------------------------------------------------+
+|   | Hibernate的数据类型  | type="string"                                                         |
++---+----------------------+-----------------------------------------------------------------------+
+|   | Java的数据类型       | type="java.lang.String"                                               |
++---+----------------------+-----------------------------------------------------------------------+
+|   | 数据库字段的数据类型 | &lt; column name="name" sql-type="varchar"/ &gt;                      |
++---+----------------------+-----------------------------------------------------------------------+
+
+** 主键生成策略
+|   identity  | 自增长(mysql,db2)                                                            |
+|   sequence  | 自增长(序列)， oracle中自增长是以序列方法实现                                |
+|   native    | 自增长【会根据底层数据库自增长的方式选择identity或sequence】                 |
+|             | 如果是mysql数据库, 采用的自增长方式是identity                                |
+|             | 如果是oracle数据库， 使用sequence序列的方式实现自增长                        |
+|   increment | 自增长(会有并发访问的问题，一般在服务器集群环境使用会存在问题)               |
+|   assigned  | 指定主键生成策略为手动指定主键的值（程序员指派，做映射时会用）               |
+|   uuid      | 指定uuid随机生成的唯一的值（64位不会重复的随机字符串，但不具有业务上的说明） |
+|   foreign   | 外键的方式（一对一一对多的映射中会用）                                       |
+
+** Hibernate核心API
+- Configuration  配置管理类对象 \\
+|config.configure();     | 加载主配置文件的方法(hibernate.cfg.xml) 默认加载src/hibernate.cfg.xml |
+|config.configure(“cn/config/hibernate.cfg.xml”);   | 加载指定路径下指定名称的主配置文件        |
+|config.buildSessionFactory();                      | 创建session的工厂对象        |
+
+- SessionFactory session的工厂 \\
+| sf.openSession();       | 创建一个sesison对象          |
+| sf.getCurrentSession(); | 创建session或取出session对象 |
+
+- session对象维护了一个连接(Connection), 代表了与数据库连接的会话。
+
+session 对象是Hibernate最重要的对象：只要用hibernate与数据库操作，都用到这个对象
+
+session.beginTransaction(); 开启一个事务； hibernate要求所有的与数据库的操作            必须有事务的环境，否则报错！（后面的 Spring 会帮我们完成事务的管理）
+
+读的时候也要开启事务，因为可能出现幻读。
+
+下面是 session 对象的一些方法：
+
+#+CAPTION:更新
+#+ATTR_HTML: class="center"
+|       session.save(obj);         | 保存一个对象                         |
+|       session.update(emp);       | 更新一个对象                         |
+|       session.saveOrUpdate(emp); | 保存或者更新的方法：                 |
+|                                  |    数据库没有设置该主键，执行保存；  |
+|                                  |    有设置主键，执行更新操作;         |
+|                                  |    如果设置主键不存在报错！          |
+
+#+CAPTION:主键查询
+#+ATTR_HTML: class="center"
+|   session.get(Employee.class, 1);  | 主键查询                                                      |
+|   session.load(Employee.class, 1); | 主键查询 (支持懒加载，只是把对象拿来，到用时才在数据库里提取，可以提高效率) |
+
+** 工作流程
+使用 Hibernate 首先要创建一个 Configuration 对象
+1. 通过Configuration对象读取并解析配置文件
+2. 读取并解析映射信息，创建SessionFactory对象
+3. 打开session
+4. 创建事务Transaction
+5. 持久化操作，对对象进行CRUD操作
+6. 提交事务
+7. 关闭session和SessionFactory对象
+
+https://raw.githubusercontent.com/Ynjxsjmh/ynjxsjmh.github.io/master/img/2019/2019-03-10-02-01.png
