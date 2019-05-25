@@ -1,3 +1,15 @@
+* Table of Contents                                                     :TOC_5:QUOTE:
+#+BEGIN_QUOTE
+- [[#about][About]]
+- [[#environment][Environment]]
+- [[#file-info][File Info]]
+  - [[#hibernate][Hibernate]]
+  - [[#struts2][Struts2]]
+  - [[#spring][Spring]]
+  - [[#ssh][SSH]]
+- [[#posts][Posts]]
+#+END_QUOTE
+
 * About
 This a repo to store the SSH projects my teacher taught me.
 
@@ -68,4 +80,4 @@ In =SpringHibernate02= , transaction in Hibernate is handed over to Spring's dec
 
 Note that all the =SpringDemo*= are Java projects, you also need to import the all the jars in =lib= folder to the project by following =Right click on your project name -> Build Path -> Configure Build Path -> Tab *Libraries* -> Add JARs -> Choose all the jars in your project's lib folder= 
 * Posts
-Those are tutorials for this repo. The display is awful on Github, so if you use Emacs or Pandoc, you can export them into HTML for better experience.
+Those are tutorials for this repo. The display is awful on Github, so if you use Emacs or Pandoc, you can export them into HTML for better reading experience.
