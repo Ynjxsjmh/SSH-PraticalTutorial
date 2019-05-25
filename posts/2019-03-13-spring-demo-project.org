@@ -11,6 +11,47 @@
 
 这是一个 Java 项目，不是 web 项目。
 
+* Table of Contents                                                     :TOC_5:QUOTE:
+#+BEGIN_QUOTE
+- [[#导入包][导入包]]
+- [[#样例-1][样例 1]]
+  - [[#user对象][User对象]]
+  - [[#spring配置文件][spring配置文件]]
+  - [[#测试1][测试1]]
+  - [[#测试2][测试2]]
+  - [[#bean对象创建细节][bean对象创建细节]]
+- [[#样例-2][样例 2]]
+  - [[#创建对象方式][创建对象方式]]
+  - [[#user-对象][User 对象]]
+  - [[#beanxmlspring-对象创建方法][bean.xml(Spring 对象创建方法)]]
+  - [[#objectfactoryjava][ObjectFactory.java]]
+  - [[#测试类][测试类]]
+- [[#样例-3][样例 3]]
+  - [[#对象依赖关系][对象依赖关系]]
+  - [[#set-方法][set 方法]]
+    - [[#user-对象-1][User 对象]]
+    - [[#userdaojava][UserDao.java]]
+    - [[#userservicejava][UserService.java]]
+    - [[#useractionjava][UserAction.java]]
+    - [[#beanxml][bean.xml]]
+  - [[#p-名称空间][p 名称空间]]
+    - [[#bean_pxml][bean_p.xml]]
+    - [[#app_pjava][App_p.java]]
+  - [[#自动装配开发一时爽维护火葬场][自动装配（开发一时爽，维护火葬场）]]
+    - [[#userdaojava-1][UserDao.java]]
+    - [[#userservicejava-1][UserService.java]]
+    - [[#useractionjava-1][UserAction.java]]
+    - [[#beanxml-1][bean.xml]]
+    - [[#测试类-1][测试类]]
+  - [[#注解][注解]]
+    - [[#spring与struts框架整合][spring与Struts框架整合]]
+    - [[#userdaojava-2][UserDao.java]]
+    - [[#userservicejava-2][UserService.java]]
+    - [[#useractionjava-2][UserAction.java]]
+    - [[#beanxml-2][bean.xml]]
+    - [[#测试类-2][测试类]]
+#+END_QUOTE
+
 * 导入包
 | commons-logging-1.1.3.jar           | 日志               |
 | spring-beans-3.2.5.RELEASE.jar      | bean节点           |

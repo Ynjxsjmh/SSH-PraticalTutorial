@@ -9,6 +9,12 @@
 #+EMAIL: ynjxsjmh@gmail.com
 #+FILETAGS: ::
 
+* Table of Contents                                                     :TOC:QUOTE:
+#+BEGIN_QUOTE
+- [[#开发背景及意义][开发背景及意义]]
+- [[#系统组成][系统组成]]
+#+END_QUOTE
+
 * 开发背景及意义
 CRM（Customer Relationship Management）客户关系管理，是利用相应的信息技术以及互联网技术来协调企业与顾客间在销售、营销和服务上的交互，向客户提供创新式的个性化的客户交互和服务的过程。其最终目标是将面向客户的各项信息和活动集成起来，组建一个以客户为中心的企业，实现对面向客户的活动的全面管理。
 

@@ -9,6 +9,19 @@
 #+EMAIL: ynjxsjmh@gmail.com
 #+FILETAGS: ::
 
+* Table of Contents                                                     :TOC_5:QUOTE:
+#+BEGIN_QUOTE
+- [[#需求][需求]]
+- [[#项目实现文件结构][项目实现文件结构]]
+- [[#客户的dao层][客户的DAO层]]
+- [[#客户的业务层][客户的业务层]]
+- [[#增加客户页面][增加客户页面]]
+- [[#webxml][web.xml]]
+- [[#struts2配置文件][struts2配置文件]]
+- [[#spring配置文件][spring配置文件]]
+- [[#客户控制层][客户控制层]]
+#+END_QUOTE
+
 * 需求
 使用Spring的IOC完成保存客户的操作:
 

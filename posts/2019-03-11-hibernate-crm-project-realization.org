@@ -9,6 +9,24 @@
 #+EMAIL: ynjxsjmh@gmail.com
 #+FILETAGS: ::
 
+* Table of Contents                                                     :TOC:QUOTE:
+#+BEGIN_QUOTE
+- [[#需求][需求]]
+- [[#创建web工程引入hibernate开发所需要的jar包][创建WEB工程，引入Hibernate开发所需要的jar包]]
+- [[#创建客户表-cst_customer][创建客户表 cst_customer]]
+- [[#引入hibernate的开发包][引入Hibernate的开发包]]
+- [[#创建客户实体][创建客户实体]]
+- [[#创建客户实体与客户表的映射关系][创建客户实体与客户表的映射关系]]
+- [[#创建hibernate的核心配置文件][创建Hibernate的核心配置文件]]
+- [[#编写hibernate工具类][编写Hibernate工具类]]
+- [[#测试类][测试类]]
+- [[#客户管理dao层][客户管理DAO层]]
+- [[#客户管理业务层][客户管理业务层]]
+- [[#客户管理控制层][客户管理控制层]]
+- [[#webxml][web.xml]]
+- [[#增加用户页面][增加用户页面]]
+#+END_QUOTE
+
 * 需求
 使用Hibernate框架完成对客户的增删改查的操作
 

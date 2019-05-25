@@ -9,6 +9,42 @@
 #+EMAIL: ynjxsjmh@gmail.com
 #+FILETAGS: ::
 
+* Table of Contents                                                     :TOC_5:QUOTE:
+#+BEGIN_QUOTE
+- [[#需求][需求]]
+- [[#项目实现][项目实现]]
+  - [[#创建表][创建表]]
+    - [[#联系人表cst_linkman][联系人表cst_linkman]]
+    - [[#系统用户表sys_user][系统用户表sys_user]]
+    - [[#系统角色表sys_role][系统角色表sys_role]]
+  - [[#创建实体类][创建实体类]]
+    - [[#customerjava][Customer.java]]
+    - [[#linkmanjava][Linkman.java]]
+    - [[#userjava][User.java]]
+    - [[#rolejava][Role.java]]
+  - [[#创建实体与表的映射关系][创建实体与表的映射关系]]
+    - [[#customerhbmxml][Customer.hbm.xml]]
+    - [[#linkmanhbmxml][Linkman.hbm.xml]]
+    - [[#userhbmxml][User.hbm.xml]]
+    - [[#rolehbmxml][Role.hbm.xml]]
+  - [[#创建hibernate的核心配置文件][创建Hibernate的核心配置文件]]
+  - [[#编写hibernate工具类][编写Hibernate工具类]]
+  - [[#测试类][测试类]]
+    - [[#demo1java-测试客户和联系人][Demo1.java 测试客户和联系人]]
+    - [[#demo2java-测试用户和角色][Demo2.java 测试用户和角色]]
+  - [[#dao层][DAO层]]
+    - [[#customerdaojava][CustomerDao.java]]
+    - [[#linkmandaojava][LinkmanDao.java]]
+  - [[#业务层][业务层]]
+    - [[#customerservicejava][CustomerService.java]]
+    - [[#linkmanservicejava][LinkmanService.java]]
+  - [[#控制层][控制层]]
+    - [[#initaddjava][InitAdd.java]]
+    - [[#addlinkmanjava][AddLinkman.java]]
+  - [[#webxml][web.xml]]
+  - [[#增加联系人页面][增加联系人页面]]
+#+END_QUOTE
+
 * 需求
 一个客户对应多个联系人，单独在联系人管理模块中对联系人信息进行维护，功能包括：添加联系人、修改联系人、删除联系人。
 - 添加联系人：添加联系人时指定所属客户，添加信息包括联系人名称、联系电话等

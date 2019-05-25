@@ -9,6 +9,22 @@
 #+EMAIL: ynjxsjmh@gmail.com
 #+FILETAGS: ::
 
+* Table of Contents                                                     :TOC:QUOTE:
+#+BEGIN_QUOTE
+- [[#需求][需求]]
+- [[#创建web项目引入struts---jar包][创建web项目，引入struts - jar包]]
+- [[#创建表][创建表]]
+- [[#hibernate配置文件][Hibernate配置文件]]
+- [[#hibernate工具类][Hibernate工具类]]
+- [[#用户实体对象及映射文件][用户实体对象及映射文件]]
+- [[#用户的dao层][用户的DAO层]]
+- [[#用户的业务层][用户的业务层]]
+- [[#用户登录页面][用户登录页面]]
+- [[#webxml][web.xml]]
+- [[#struts2配置文件][struts2配置文件]]
+- [[#用户的控制层-开发-action][用户的控制层 开发 Action]]
+#+END_QUOTE
+
 * 需求
 CRM系统中需要有登录的功能
 

@@ -9,6 +9,21 @@
 #+EMAIL: ynjxsjmh@gmail.com
 #+FILETAGS: ::
 
+* Table of Contents                                                     :TOC:QUOTE:
+#+BEGIN_QUOTE
+- [[#学习内容][学习内容]]
+- [[#struts2框架的概述][Struts2框架的概述]]
+  - [[#什么是struts2][什么是Struts2]]
+  - [[#struts2执行流程][struts2执行流程]]
+  - [[#struts详解][struts详解]]
+- [[#struts入门][Struts入门]]
+  - [[#web项目引入struts---jar包][web项目，引入struts - jar包]]
+  - [[#webxml中引入struts的核心功能配置过滤器][web.xml中，引入struts的核心功能，配置过滤器]]
+  - [[#开发action][开发action]]
+  - [[#配置strutsxml][配置struts.xml]]
+  - [[#successjsp][success.jsp]]
+#+END_QUOTE
+
 * 学习内容
 1. 掌握struts入门案例
 2. struts工作流程

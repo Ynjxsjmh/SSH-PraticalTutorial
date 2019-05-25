@@ -9,6 +9,47 @@
 #+EMAIL: ynjxsjmh@gmail.com
 #+FILETAGS: ::
 
+* Table of Contents                                                     :TOC_5:QUOTE:
+#+BEGIN_QUOTE
+- [[#学习内容][学习内容]]
+- [[#映射关系][映射关系]]
+  - [[#集合映射][集合映射]]
+    - [[#hibernatecfgxml][hibernate.cfg.xml]]
+    - [[#userjava][User.java]]
+    - [[#userhbmxml][User.hbm.xml]]
+    - [[#appjava][App.java]]
+  - [[#关联映射][关联映射]]
+    - [[#一对多和多对一][一对多和多对一]]
+      - [[#deptjava][Dept.java]]
+      - [[#employeejava][Employee.java]]
+      - [[#depthbmxml][Dept.hbm.xml]]
+      - [[#employeehbmxml][Employee.hbm.xml]]
+      - [[#测试保存][测试保存]]
+      - [[#测试获取][测试获取]]
+      - [[#测试控制反转][测试控制反转]]
+      - [[#测试级联操作][测试级联操作]]
+    - [[#多对多][多对多]]
+      - [[#projectjava][Project.java]]
+      - [[#developerjava][Developer.java]]
+      - [[#projecthbmxml][Project.hbm.xml]]
+      - [[#developerhbmxml][Developer.hbm.xml]]
+      - [[#测试保存-1][测试保存]]
+      - [[#测试控制反转-1][测试控制反转]]
+    - [[#一对一][一对一]]
+      - [[#基于外键的映射][基于外键的映射]]
+        - [[#userjava-1][User.java]]
+        - [[#idcardjava][IdCard.java]]
+        - [[#userhbmxml-1][User.hbm.xml]]
+        - [[#idcardhbmxml][IdCard.hbm.xml]]
+        - [[#appjava-1][App.java]]
+      - [[#基于主键的映射][基于主键的映射]]
+        - [[#userjava-2][User.java]]
+        - [[#idcardjava-1][IdCard.java]]
+        - [[#userhbmxml-2][User.hbm.xml]]
+        - [[#idcardhbmxml-1][IdCard.hbm.xml]]
+        - [[#appjava-2][App.java]]
+#+END_QUOTE
+
 * 学习内容
 1. 集合映射
 2. 一对多与多对一映射 (重点)

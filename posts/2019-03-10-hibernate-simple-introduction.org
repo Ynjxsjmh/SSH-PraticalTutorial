@@ -9,6 +9,21 @@
 #+EMAIL: ynjxsjmh@gmail.com
 #+FILETAGS: ::
 
+* Table of Contents                                                     :TOC:QUOTE:
+#+BEGIN_QUOTE
+- [[#学习内容][学习内容]]
+- [[#hibernate][Hibernate]]
+  - [[#什么是框架][什么是框架]]
+  - [[#orm对象关系映射][ORM（对象关系映射）]]
+  - [[#hibernate概念][Hibernate概念]]
+  - [[#hibernate的优点][Hibernate的优点]]
+  - [[#hibernatecfgxml配置文件][hibernate.cfg.xml配置文件]]
+  - [[#映射文件配置][映射文件配置]]
+  - [[#主键生成策略][主键生成策略]]
+  - [[#hibernate核心api][Hibernate核心API]]
+  - [[#工作流程][工作流程]]
+#+END_QUOTE
+
 * 学习内容
 1. 掌握Hibernate的执行流程
 2. 独立使用Hibernate的完成对客户的CRUD的操作

@@ -9,6 +9,42 @@
 #+EMAIL: ynjxsjmh@gmail.com
 #+FILETAGS: ::
 
+* Table of Contents                                                     :TOC_5:QUOTE:
+#+BEGIN_QUOTE
+- [[#学习内容][学习内容]]
+- [[#对象的状态][对象的状态]]
+  - [[#hibernatecfgxml][hibernate.cfg.xml]]
+  - [[#userjava][User.java]]
+  - [[#userhbmxml][User.hbm.xml]]
+  - [[#app1_statusjava][App1_status.java]]
+  - [[#app2_cachejava][App2_cache.java]]
+  - [[#app3_list_iteratorjava][App3_list_iterator.java]]
+- [[#懒加载][懒加载]]
+- [[#hibernate查询][hibernate查询]]
+  - [[#hql-查询][HQL 查询]]
+    - [[#deptjava][Dept.java]]
+    - [[#employeejava][Employee.java]]
+    - [[#depthbmxml][Dept.hbm.xml]]
+    - [[#employeehbmxml][Employee.hbm.xml]]
+    - [[#testdatajava][testData.java]]
+    - [[#app_hqljava][App_hql.java]]
+  - [[#criteria-查询][Criteria 查询]]
+    - [[#app_criteriajava][App_criteria.java]]
+    - [[#离线查询][离线查询]]
+  - [[#分页查询][分页查询]]
+- [[#缓存][缓存]]
+  - [[#缓存的作用][缓存的作用]]
+  - [[#二级缓存配置][二级缓存配置]]
+    - [[#二级缓存][二级缓存]]
+    - [[#使用二级缓存][使用二级缓存]]
+    - [[#二级缓存使用步骤][二级缓存，使用步骤]]
+    - [[#缓存策略][缓存策略]]
+    - [[#hibernatecfgxml-1][hibernate.cfg.xml]]
+    - [[#appjava][App.java]]
+  - [[#threadlocal][ThreadLocal]]
+  - [[#open-session-in-view][Open session in view]]
+#+END_QUOTE
+
 * 学习内容
 1. 对象状态
 2. lazy懒加载
